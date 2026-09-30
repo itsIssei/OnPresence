@@ -1,0 +1,65 @@
+[
+  {
+    "id": "starfall",
+    "name": "Starfall",
+    "title": "Starfall",
+    "description": "Twinkling stars and shooting stars across the card.",
+    "category": "custom",
+    "category_name": "OnPresence originals",
+    "thumbnailPreviewSrc": "/img/effects/starfall.png",
+    "staticFrameSrc": "/img/effects/starfall-still.png",
+    "reducedMotionSrc": "/img/effects/starfall-still.png",
+    "effects": [
+      {
+        "src": "/img/effects/starfall.png",
+        "loop": true,
+        "duration": 0,
+        "start": 0,
+        "loopDelay": 0,
+        "zIndex": 1
+      }
+    ]
+  },
+  {
+    "id": "fireflies",
+    "name": "Fireflies",
+    "title": "Fireflies",
+    "description": "Soft glowing fireflies drifting over the card.",
+    "category": "custom",
+    "category_name": "OnPresence originals",
+    "thumbnailPreviewSrc": "/img/effects/fireflies.png",
+    "staticFrameSrc": "/img/effects/fireflies-still.png",
+    "reducedMotionSrc": "/img/effects/fireflies-still.png",
+    "effects": [
+      {
+        "src": "/img/effects/fireflies.png",
+        "loop": true,
+        "duration": 0,
+        "start": 0,
+        "loopDelay": 0,
+        "zIndex": 1
+      }
+    ]
+  },
+  {
+    "id": "first-snow",
+    "name": "First Snow",
+    "title": "First Snow",
+    "description": "Gentle snow falling over the card.",
+    "category": "custom",
+    "category_name": "OnPresence originals",
+    "thumbnailPreviewSrc": "/img/effects/first-snow.png",
+    "staticFrameSrc": "/img/effects/first-snow-still.png",
+    "reducedMotionSrc": "/img/effects/first-snow-still.png",
+    "effects": [
+      {
+        "src": "/img/effects/first-snow.png",
+        "loop": true,
+        "duration": 0,
+        "start": 0,
+        "loopDelay": 0,
+        "zIndex": 1
+      }
+    ]
+  }
+]

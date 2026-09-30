@@ -1,0 +1,33 @@
+/** UI labels shown to visitors. */
+export const strings = {
+  enter: "click to enter",
+  openVault: "Open display case",
+  closeVault: "Back to card",
+  views: "views",
+  mute: "Mute music",
+  unmute: "Play music",
+  replayEffect: "Replay effect",
+  games: "Games",
+  anime: "Anime",
+  manga: "Manga & Manhwa",
+  music: "Music",
+  referrals: "Projects & Referrals",
+  projects: "Projects",
+  invites: "Referrals",
+  open: "Open",
+  all: "All",
+  search: "Search…",
+  hours: "h played",
+  empty: "Nothing here yet.",
+  copyCode: "Copy code",
+  copied: "Copied!",
+  join: "Join",
+  featured: "Featured",
+  tracks: "tracks",
+  listenOn: "Listen on",
+  review: "Review",
+  noResults: "No results.",
+  playing: "Now playing",
+};
+
+export type Strings = typeof strings;

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#3b1a78"/></linearGradient>
+    <linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+  </defs>
+  <path d="M32 2 L57 16.5 L57 47.5 L32 62 L7 47.5 L7 16.5 Z" fill="url(#m)" stroke="#fcd34d" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M32 7 L53 19 L53 45 L32 57 L11 45 L11 19 Z" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1.5" stroke-linejoin="round"/>
+  <title>Masterpiece</title>
+  <path d="M32 14 L37.3 24.8 L49.2 26.5 L40.6 34.9 L42.6 46.7 L32 41.1 L21.4 46.7 L23.4 34.9 L14.8 26.5 L26.7 24.8 Z" fill="url(#s)" stroke="#7c4a03" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M32 14 L37.3 24.8 L32 41.1 Z" fill="#fff" opacity=".35"/>
+</svg>

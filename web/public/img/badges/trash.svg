@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b4b55"/><stop offset="1" stop-color="#1d1d22"/></linearGradient>
+  </defs>
+  <path d="M32 2 L57 16.5 L57 47.5 L32 62 L7 47.5 L7 16.5 Z" fill="url(#m)" stroke="#8a8a96" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M32 7 L53 19 L53 45 L32 57 L11 45 L11 19 Z" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1.5" stroke-linejoin="round"/>
+  <title>Trash</title>
+  <path d="M32 50 C21 42 13 36 13 27 C13 21 17.5 17 23 17 C27 17 30.5 19.5 32 23 C33.5 19.5 37 17 41 17 C46.5 17 51 21 51 27 C51 36 43 42 32 50 Z" fill="#6b6b76" stroke="#15151a" stroke-width="2"/>
+  <path d="M32 23 L28 31 L35 35 L29 43 L32 50" fill="none" stroke="#15151a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M20 29 L24 26 M44 29 L40 26" stroke="#15151a" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

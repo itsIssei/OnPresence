@@ -1,0 +1,14 @@
+.git
+.gitignore
+data/
+docs/
+deploy/
+tools/
+*.md
+.env
+.env.*
+!.env.example
+**/node_modules
+web/dist
+.DS_Store
+Thumbs.db

@@ -1,0 +1,132 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/sora";
+@import "@fontsource-variable/jetbrains-mono";
+/* Display fonts selectable in the dashboard. Browsers only download the ones in use. */
+@import "@fontsource-variable/cinzel";
+@import "@fontsource-variable/orbitron";
+@import "@fontsource-variable/grenze-gotisch";
+@import "@fontsource/pirata-one";
+@import "@fontsource/creepster";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Design tokens. The site is dark-only; --accent-* is driven by the profile's
+   accent color at runtime (see theme.ts). */
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.13 0.012 300);
+  --foreground: oklch(0.96 0.005 300);
+  --card: oklch(0.17 0.014 300);
+  --card-foreground: oklch(0.96 0.005 300);
+  --popover: oklch(0.17 0.014 300);
+  --popover-foreground: oklch(0.96 0.005 300);
+  --primary: var(--brand, oklch(0.6 0.2 293));
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.23 0.015 300);
+  --secondary-foreground: oklch(0.96 0.005 300);
+  --muted: oklch(0.23 0.015 300);
+  --muted-foreground: oklch(0.72 0.015 300);
+  --accent: oklch(0.25 0.02 300);
+  --accent-foreground: oklch(0.96 0.005 300);
+  --destructive: oklch(0.62 0.22 25);
+  --border: oklch(1 0 0 / 0.09);
+  --input: oklch(1 0 0 / 0.12);
+  --ring: var(--brand, oklch(0.6 0.2 293));
+  --sidebar: oklch(0.15 0.013 300);
+  --sidebar-foreground: oklch(0.92 0.005 300);
+  --sidebar-primary: var(--brand, oklch(0.6 0.2 293));
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.23 0.015 300);
+  --sidebar-accent-foreground: oklch(0.96 0.005 300);
+  --sidebar-border: oklch(1 0 0 / 0.07);
+  --sidebar-ring: var(--brand, oklch(0.6 0.2 293));
+  --chart-1: var(--brand, oklch(0.6 0.2 293));
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora Variable", "Inter Variable", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-brand: var(--brand, oklch(0.6 0.2 293));
+  --color-brand-soft: color-mix(in oklch, var(--brand, oklch(0.6 0.2 293)) 22%, transparent);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply bg-background text-foreground antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply min-h-dvh font-sans;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--brand, #e11d48) 45%, transparent);
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+}
+
+
+/* Tokens above resolve var(--brand) on :root. Re-resolve them where the
+   profile accent is set (dashboard shell), so buttons follow the theme. */
+[data-brand] {
+  --primary: var(--brand);
+  --ring: var(--brand);
+  --sidebar-primary: var(--brand);
+  --sidebar-ring: var(--brand);
+  --chart-1: var(--brand);
+}

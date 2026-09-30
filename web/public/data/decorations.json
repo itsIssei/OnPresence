@@ -1,0 +1,26 @@
+[
+  {
+    "id": "orbit",
+    "name": "Orbit",
+    "description": "Two comets circling your avatar.",
+    "category": "custom",
+    "category_name": "OnPresence originals",
+    "url": "/img/decorations/orbit.png"
+  },
+  {
+    "id": "aurora-halo",
+    "name": "Aurora Halo",
+    "description": "A shifting ring of northern lights.",
+    "category": "custom",
+    "category_name": "OnPresence originals",
+    "url": "/img/decorations/aurora-halo.png"
+  },
+  {
+    "id": "ember-crown",
+    "name": "Ember Crown",
+    "description": "Embers rising from a warm glow.",
+    "category": "custom",
+    "category_name": "OnPresence originals",
+    "url": "/img/decorations/ember-crown.png"
+  }
+]

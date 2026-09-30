@@ -1,0 +1,33 @@
+# Environment files
+.env
+
+# Go build output
+/onpresence
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Runtime data (database, uploads, backups, caches)
+/data/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Local tooling
+.vscode/
+.idea/
+*.log
+tmp/
+
+# Frontend
+node_modules/
+web/dist/*
+!web/dist/.keep
+*.tsbuildinfo
+
+# Local test copies of data/
+data-*/

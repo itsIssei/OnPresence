@@ -1,0 +1,44 @@
+# OnPresence + Caddy with automatic HTTPS. Nothing else to install.
+#   Point your domain's A/AAAA record to this server, then:
+#   DOMAIN=example.com docker compose up -d
+services:
+  onpresence:
+    image: ghcr.io/itsissei/onpresence:latest
+    container_name: onpresence
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PUBLIC_URL=https://${DOMAIN:?set DOMAIN}
+      - TRUSTED_PROXIES=172.16.0.0/12
+    volumes:
+      - onpresence-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - onpresence
+
+volumes:
+  onpresence-data:
+  caddy-data:
+  caddy-config:

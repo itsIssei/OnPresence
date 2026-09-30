@@ -1,0 +1,343 @@
+{
+  "app": "onpresence",
+  "version": 1,
+  "profile": {
+    "name": "Nova",
+    "handle": "@nova.pixels",
+    "title": "Pixel artist & speedrunner",
+    "bio": "I draw tiny worlds one pixel at a time, then try to beat them faster than anyone else.\nCommissions open.",
+    "avatar_url": "/img/demo/avatar.svg",
+    "background_url": "",
+    "card_bg_url": "/img/demo/banner.svg",
+    "audio_url": "",
+    "audio_title": "",
+    "discord_id": "",
+    "discord_status": "online",
+    "steam_id": "",
+    "steam_level": "LVL 42",
+    "anilist_username": "",
+    "lastfm_username": "",
+    "settings": {
+      "theme": "violet",
+      "accent_color": "#a78bfa",
+      "avatar_decoration": "orbit",
+      "profile_effect": "starfall",
+      "card_effect": "none",
+      "background_fx": "embers",
+      "card_opacity": 0.72,
+      "card_blur": 18,
+      "avatar_zoom": 100,
+      "avatar_shape": "circle",
+      "name_style": "gradient",
+      "card_tilt": true,
+      "name_font": "sora",
+      "gate_font": "sora",
+      "name_logo": "",
+      "name_logo_mode": "original",
+      "name_logo_height": 72,
+      "effect_on_hover": false,
+      "entry_gate": false,
+      "gate_text": "click to enter",
+      "music_mode": "auto",
+      "default_volume": 10,
+      "show_presence": true,
+      "show_view_count": true,
+      "show_credit": true,
+      "vault_enabled": true,
+      "vault_title": "Nova's Shelf",
+      "vault_subtitle": "Games, anime and music that shaped my pixels.",
+      "vault_badge": "Curated",
+      "vault_icon": "/img/brand/vault.svg",
+      "vault_steam_badge": "",
+      "collection_score": "",
+      "sections": [
+        "referrals",
+        "games",
+        "anime",
+        "manga",
+        "music"
+      ]
+    }
+  },
+  "links": [
+    {
+      "platform": "github",
+      "label": "GitHub",
+      "url": "https://github.com",
+      "icon": "github",
+      "sort_order": 0,
+      "is_active": true,
+      "clicks": 0
+    },
+    {
+      "platform": "twitch",
+      "label": "Twitch",
+      "url": "https://twitch.tv",
+      "icon": "twitch",
+      "sort_order": 1,
+      "is_active": true,
+      "clicks": 0
+    },
+    {
+      "platform": "youtube",
+      "label": "YouTube",
+      "url": "https://youtube.com",
+      "icon": "youtube",
+      "sort_order": 2,
+      "is_active": true,
+      "clicks": 0
+    },
+    {
+      "platform": "bluesky",
+      "label": "Bluesky",
+      "url": "https://bsky.app",
+      "icon": "bluesky",
+      "sort_order": 3,
+      "is_active": true,
+      "clicks": 0
+    },
+    {
+      "platform": "kofi",
+      "label": "Ko-fi",
+      "url": "https://ko-fi.com",
+      "icon": "kofi",
+      "sort_order": 4,
+      "is_active": true,
+      "clicks": 0
+    }
+  ],
+  "badges": [
+    {
+      "title": "Pixel artist",
+      "subtitle": "10 years of tiny art",
+      "icon": "sparkles",
+      "color": "#c4b5fd",
+      "category": "",
+      "sort_order": 0
+    },
+    {
+      "title": "Speedrunner",
+      "subtitle": "Any% world record holder (for a week)",
+      "icon": "trophy",
+      "color": "#fbbf24",
+      "category": "",
+      "sort_order": 1
+    },
+    {
+      "title": "Night owl",
+      "subtitle": "Best work happens at 3 AM",
+      "icon": "moon",
+      "color": "#93c5fd",
+      "category": "",
+      "sort_order": 2
+    }
+  ],
+  "games": [
+    {
+      "title": "Starfall Drift",
+      "subtitle": "Arcade racer",
+      "cover_image": "/img/demo/game-starfall-drift.svg",
+      "rating": "9.5/10",
+      "badge": "Speedrun",
+      "badge_type": "masterpiece",
+      "hours_played": 412,
+      "category": "Racing",
+      "review_note": "The drift physics are perfect. My any% route is 18:42.",
+      "is_featured": true,
+      "sort_order": 0
+    },
+    {
+      "title": "Hollow Lantern",
+      "subtitle": "Metroidvania",
+      "cover_image": "/img/demo/game-hollow-lantern.svg",
+      "rating": "9/10",
+      "badge": "",
+      "badge_type": "good",
+      "hours_played": 96,
+      "category": "Adventure",
+      "review_note": "Moody pixel art that inspired half my portfolio.",
+      "is_featured": false,
+      "sort_order": 1
+    },
+    {
+      "title": "Neon Courier",
+      "subtitle": "Rhythm platformer",
+      "cover_image": "/img/demo/game-neon-courier.svg",
+      "rating": "8/10",
+      "badge": "",
+      "badge_type": "good",
+      "hours_played": 58,
+      "category": "Rhythm",
+      "review_note": "",
+      "is_featured": false,
+      "sort_order": 2
+    },
+    {
+      "title": "Tidebreaker",
+      "subtitle": "Roguelike",
+      "cover_image": "/img/demo/game-tidebreaker.svg",
+      "rating": "6/10",
+      "badge": "",
+      "badge_type": "okay",
+      "hours_played": 21,
+      "category": "Roguelike",
+      "review_note": "Fun runs, grindy meta.",
+      "is_featured": false,
+      "sort_order": 3
+    }
+  ],
+  "media": [
+    {
+      "title": "Moonlit Academy",
+      "type": "anime",
+      "cover_image": "/img/demo/anime-moonlit-academy.svg",
+      "rating": "10/10",
+      "rank_badge": "#1",
+      "category_badge": "Slice of life",
+      "progress_info": "24/24 eps",
+      "review_note": "Comfort show.",
+      "tags": "school, fantasy",
+      "is_featured": true,
+      "anilist_id": 0,
+      "sort_order": 0
+    },
+    {
+      "title": "Iron Petal",
+      "type": "anime",
+      "cover_image": "/img/demo/anime-iron-petal.svg",
+      "rating": "8.5/10",
+      "rank_badge": "",
+      "category_badge": "Action",
+      "progress_info": "12/12 eps",
+      "review_note": "",
+      "tags": "mecha",
+      "is_featured": false,
+      "anilist_id": 0,
+      "sort_order": 1
+    },
+    {
+      "title": "Clockwork Sky",
+      "type": "manga",
+      "cover_image": "/img/demo/manga-clockwork-sky.svg",
+      "rating": "9/10",
+      "rank_badge": "",
+      "category_badge": "Adventure",
+      "progress_info": "Ch. 88",
+      "review_note": "",
+      "tags": "steampunk",
+      "is_featured": false,
+      "anilist_id": 0,
+      "sort_order": 2
+    },
+    {
+      "title": "Ember Road",
+      "type": "manhwa",
+      "cover_image": "/img/demo/manga-ember-road.svg",
+      "rating": "8/10",
+      "rank_badge": "",
+      "category_badge": "Drama",
+      "progress_info": "Ch. 120",
+      "review_note": "",
+      "tags": "",
+      "is_featured": false,
+      "anilist_id": 0,
+      "sort_order": 3
+    }
+  ],
+  "playlists": [
+    {
+      "title": "Night Drive",
+      "subtitle": "Synthwave for late sessions",
+      "type": "playlist",
+      "cover_image": "/img/demo/music-night-drive.svg",
+      "spotify_url": "",
+      "yt_music_url": "",
+      "audio_url": "",
+      "duration": "1h 12m",
+      "artist": "Various artists",
+      "is_featured": true,
+      "tracks": [
+        {
+          "track_number": "1",
+          "title": "Midnight Grid",
+          "artist": "Lumen Rider",
+          "duration": "4:12",
+          "audio_url": ""
+        },
+        {
+          "track_number": "2",
+          "title": "Chrome Horizon",
+          "artist": "Vapor Lane",
+          "duration": "3:48",
+          "audio_url": ""
+        },
+        {
+          "track_number": "3",
+          "title": "Afterglow",
+          "artist": "Nightline",
+          "duration": "5:03",
+          "audio_url": ""
+        }
+      ],
+      "sort_order": 0
+    },
+    {
+      "title": "Rainy Lo-fi",
+      "subtitle": "Drawing background noise",
+      "type": "playlist",
+      "cover_image": "/img/demo/music-rainy-lofi.svg",
+      "spotify_url": "",
+      "yt_music_url": "",
+      "audio_url": "",
+      "duration": "48m",
+      "artist": "Various artists",
+      "is_featured": false,
+      "tracks": [],
+      "sort_order": 1
+    }
+  ],
+  "referrals": [
+    {
+      "kind": "project",
+      "title": "Pixel Palette",
+      "game_name": "Web tool",
+      "ref_code": "",
+      "ref_url": "https://github.com",
+      "image_url": "/img/demo/project-pixel-palette.svg",
+      "description": "Generate retro color palettes from any image.",
+      "reward_text": "",
+      "badge": "New",
+      "display_style": "banner",
+      "is_active": true,
+      "sort_order": 0
+    },
+    {
+      "kind": "project",
+      "title": "Lobby Bot",
+      "game_name": "Chat bot",
+      "ref_code": "",
+      "ref_url": "https://github.com",
+      "image_url": "/img/demo/project-lobby-bot.svg",
+      "description": "Speedrun race lobbies with split tracking.",
+      "reward_text": "",
+      "badge": "",
+      "display_style": "card",
+      "is_active": true,
+      "sort_order": 1
+    },
+    {
+      "kind": "referral",
+      "title": "Cloudlet Hosting",
+      "game_name": "Hosting",
+      "ref_code": "NOVA20",
+      "ref_url": "https://example.com",
+      "image_url": "/img/demo/ref-cloudlet.svg",
+      "description": "Where this card is hosted.",
+      "reward_text": "20% off your first month",
+      "badge": "",
+      "display_style": "card",
+      "is_active": true,
+      "sort_order": 2
+    }
+  ]
+}

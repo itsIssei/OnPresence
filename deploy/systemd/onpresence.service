@@ -1,0 +1,27 @@
+# Run the release binary without Docker.
+#   sudo useradd --system --home /var/lib/onpresence --create-home onpresence
+#   sudo install -m 755 onpresence /usr/local/bin/onpresence
+#   sudo cp onpresence.service /etc/systemd/system/ && sudo systemctl enable --now onpresence
+#   journalctl -u onpresence    # shows the one-time setup code
+[Unit]
+Description=OnPresence profile card
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=onpresence
+Group=onpresence
+Environment=PORT=8080
+Environment=DATA_DIR=/var/lib/onpresence
+# Environment=PUBLIC_URL=https://example.com
+# Environment=TRUSTED_PROXIES=127.0.0.1
+ExecStart=/usr/local/bin/onpresence
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/onpresence
+
+[Install]
+WantedBy=multi-user.target

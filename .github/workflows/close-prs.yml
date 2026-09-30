@@ -1,0 +1,23 @@
+# Pull requests are not accepted yet (see CONTRIBUTING.md). Close ones from
+# outside the project. Uses pull_request_target without checking out the
+# pull request's code, so nothing from the pull request runs here.
+name: Close outside pull requests
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  close:
+    if: ${{ !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr close "$PR" --repo "$REPO" --comment "Thanks for your interest! OnPresence does not accept pull requests yet (see CONTRIBUTING.md). Bug reports are welcome as issues, and forks are encouraged."

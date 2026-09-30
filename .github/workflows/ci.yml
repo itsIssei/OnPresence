@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - uses: actions/upload-artifact@v5
+        with:
+          name: web-dist
+          path: web/dist
+
+  go:
+    runs-on: ubuntu-24.04
+    needs: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: web-dist
+          path: web/dist
+      - uses: actions/setup-go@v6
+        with:
+          # Latest patched Go, same as the Docker build. go.mod only states the
+          # minimum version, and an old patch release makes govulncheck report
+          # already-fixed standard library bugs.
+          go-version: "1.27"
+          check-latest: true
+      - run: go vet ./...
+      - run: go test -race ./...
+      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  docker:
+    runs-on: ubuntu-24.04
+    needs: [web, go]
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t onpresence:ci .

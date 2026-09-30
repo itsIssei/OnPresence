@@ -1,0 +1,43 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`onpresence --version`, the image tag, or the version shown in Dashboard → About."
+    validations:
+      required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: How do you run it?
+      options: [Docker / Compose, Binary, Built from source]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant server log lines. Remove setup codes, passwords and API keys.
+      render: text
+  - type: checkboxes
+    id: human
+    attributes:
+      label: Confirmation
+      options:
+        - label: I wrote this report myself (not an AI agent or bot).
+          required: true

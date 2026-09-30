@@ -1,0 +1,50 @@
+# OnPresence behind an existing Traefik (v2 or v3) with Let's Encrypt.
+#   cp ../../.env.example .env   # set DOMAIN, TRAEFIK_NETWORK, CERT_RESOLVER
+#   docker compose up -d
+services:
+  onpresence:
+    image: ghcr.io/itsissei/onpresence:latest
+    container_name: onpresence
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PUBLIC_URL=https://${DOMAIN:?set DOMAIN in .env}
+      # Trust X-Forwarded-For only from Docker networks (where Traefik runs).
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+    volumes:
+      - onpresence-data:/app/data
+    networks:
+      - traefik
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
+      - traefik.http.routers.onpresence.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.onpresence.entrypoints=${TRAEFIK_ENTRYPOINT_HTTPS:-websecure}
+      - traefik.http.routers.onpresence.tls=true
+      - traefik.http.routers.onpresence.tls.certresolver=${CERT_RESOLVER:-letsencrypt}
+      - traefik.http.routers.onpresence.middlewares=onpresence-headers,onpresence-compress
+      - traefik.http.middlewares.onpresence-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.onpresence-compress.compress=true
+      - traefik.http.services.onpresence.loadbalancer.server.port=8080
+      # HTTP -> HTTPS (skip if your Traefik already redirects globally)
+      - traefik.http.routers.onpresence-http.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.onpresence-http.entrypoints=${TRAEFIK_ENTRYPOINT_HTTP:-web}
+      - traefik.http.routers.onpresence-http.middlewares=onpresence-https
+      - traefik.http.middlewares.onpresence-https.redirectscheme.scheme=https
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}
+
+volumes:
+  onpresence-data:

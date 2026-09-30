@@ -1,0 +1,27 @@
+# OnPresence, simplest setup: http://SERVER_IP:8080
+#   docker compose up -d
+#   docker compose logs onpresence    # shows the one-time setup code
+# Put it behind HTTPS before sharing the link (see deploy/ and docs/install.md).
+services:
+  onpresence:
+    image: ghcr.io/itsissei/onpresence:latest
+    # build: .                        # or build from this checkout instead
+    container_name: onpresence
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - onpresence-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  onpresence-data:
