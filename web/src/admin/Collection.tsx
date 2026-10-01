@@ -25,7 +25,7 @@ export type FieldDef<T> = {
 } & (
   | { type: "text" | "textarea" | "number" | "switch" | "image" | "audio" | "color"; maxLength?: number }
   | { type: "select"; options: Record<string, string> }
-  | { type: "custom"; render: (value: T, set: (patch: Partial<T>) => void) => React.ReactNode }
+  | { type: "custom"; render: (value: T, set: (patch: Partial<T>) => void, errors: Record<string, string>) => React.ReactNode }
 );
 
 interface Props<C extends CollectionName> {
@@ -229,7 +229,7 @@ function EditDialog<C extends CollectionName>({
           }}
         >
           {fields.map((f) => (
-            <FieldInput key={f.key} def={f} form={form as Item<C>} set={set} error={errors[f.key]} />
+            <FieldInput key={f.key} def={f} form={form as Item<C>} set={set} error={errors[f.key]} errors={errors} />
           ))}
           <DialogFooter className="sm:col-span-2">
             <Button type="button" variant="ghost" onClick={onClose}>
@@ -245,7 +245,7 @@ function EditDialog<C extends CollectionName>({
   );
 }
 
-function FieldInput<T>({ def, form, set, error }: { def: FieldDef<T>; form: T; set: (p: Partial<T>) => void; error?: string }) {
+function FieldInput<T>({ def, form, set, error, errors }: { def: FieldDef<T>; form: T; set: (p: Partial<T>) => void; error?: string; errors: Record<string, string> }) {
   const v = form[def.key] as unknown;
   const wide = def.wide || def.type === "textarea" || def.type === "image" || def.type === "audio" || def.type === "custom";
   const cls = wide ? "sm:col-span-2" : undefined;
@@ -262,7 +262,7 @@ function FieldInput<T>({ def, form, set, error }: { def: FieldDef<T>; form: T; s
       </label>
     );
   }
-  if (def.type === "custom") return <div className={cls}>{def.render(form, set)}</div>;
+  if (def.type === "custom") return <div className={cls}>{def.render(form, set, errors)}</div>;
 
   return (
     <Field label={def.label} hint={def.hint} error={error} className={cls}>

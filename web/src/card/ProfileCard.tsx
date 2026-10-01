@@ -147,17 +147,7 @@ export function ProfileCard({ profile: p, presence, audio, onOpenVault, trackLin
           {p.links.length > 0 && (
             <nav aria-label="Links" className="mt-5 flex flex-wrap justify-center gap-1">
               {p.links.map((l) => (
-                <Tip key={l.id} label={l.label}>
-                  <a
-                    href={trackLinks ? `/go/${l.id}` : l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={l.label}
-                    className="grid size-11 place-items-center rounded-xl text-white/70 transition hover:-translate-y-0.5 hover:bg-white/[0.07] hover:text-white"
-                  >
-                    <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} className="size-[22px]" />
-                  </a>
-                </Tip>
+                <CardLink key={l.id} link={l} track={trackLinks} copiedLabel={t.copied} />
               ))}
             </nav>
           )}
@@ -184,6 +174,60 @@ export function ProfileCard({ profile: p, presence, audio, onOpenVault, trackLin
           )}
         </div>
       </article>
+  );
+}
+
+const LINK_CLASS = "grid size-11 place-items-center rounded-xl text-white/70 transition hover:-translate-y-0.5 hover:bg-white/[0.07] hover:text-white";
+
+/** Clipboard API, with the old execCommand path for plain-http pages. */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      ta.remove();
+    }
+  }
+}
+
+/** One icon in the link row: opens the URL, or copies text (e.g. a username). */
+function CardLink({ link: l, track, copiedLabel }: { link: PublicProfile["links"][number]; track: boolean; copiedLabel: string }) {
+  const [copied, setCopied] = useState(false);
+  const glyph = <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} className="size-[22px]" />;
+
+  if (!l.copy_text) {
+    return (
+      <Tip label={l.label}>
+        <a href={track ? `/go/${l.id}` : l.url} target="_blank" rel="noopener noreferrer" aria-label={l.label} className={LINK_CLASS}>
+          {glyph}
+        </a>
+      </Tip>
+    );
+  }
+
+  const copy = async () => {
+    if (!(await copyToClipboard(l.copy_text))) return; // the tooltip still shows the text
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+    if (track) fetch(`/go/${l.id}`).catch(() => {});
+  };
+  return (
+    <Tip label={copied ? copiedLabel : `${l.label}: ${l.copy_text}`} show={copied}>
+      <button type="button" onClick={copy} aria-label={`${l.label}: copy ${l.copy_text}`} className={`${LINK_CLASS} cursor-copy`}>
+        {glyph}
+      </button>
+    </Tip>
   );
 }
 

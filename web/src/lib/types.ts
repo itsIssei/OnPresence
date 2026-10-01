@@ -88,6 +88,8 @@ export interface SocialLink {
   platform: string;
   label: string;
   url: string;
+  /** When set, a click copies this text instead of opening the URL. */
+  copy_text: string;
   icon: string;
   sort_order: number;
   is_active: boolean;

@@ -87,7 +87,7 @@ func (s *Store) upsert(ctx context.Context, id int64, update string, insert stri
 // ---------------------------------------------------------------- links
 
 func (s *Store) Links(ctx context.Context, activeOnly bool) ([]models.SocialLink, error) {
-	q := `SELECT id, platform, label, url, icon, sort_order, is_active, clicks FROM social_links`
+	q := `SELECT id, platform, label, url, copy_text, icon, sort_order, is_active, clicks FROM social_links`
 	if activeOnly {
 		q += ` WHERE is_active = 1`
 	}
@@ -99,7 +99,7 @@ func (s *Store) Links(ctx context.Context, activeOnly bool) ([]models.SocialLink
 	out := []models.SocialLink{}
 	for rows.Next() {
 		var x models.SocialLink
-		if err := rows.Scan(&x.ID, &x.Platform, &x.Label, &x.URL, &x.Icon, &x.SortOrder, &x.IsActive, &x.Clicks); err != nil {
+		if err := rows.Scan(&x.ID, &x.Platform, &x.Label, &x.URL, &x.CopyText, &x.Icon, &x.SortOrder, &x.IsActive, &x.Clicks); err != nil {
 			return nil, err
 		}
 		out = append(out, x)
@@ -109,21 +109,22 @@ func (s *Store) Links(ctx context.Context, activeOnly bool) ([]models.SocialLink
 
 func (s *Store) SaveLink(ctx context.Context, x *models.SocialLink) error {
 	id, err := s.upsert(ctx, x.ID,
-		`UPDATE social_links SET platform=?, label=?, url=?, icon=?, sort_order=?, is_active=? WHERE id=?`,
-		`INSERT INTO social_links (platform, label, url, icon, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)`,
-		x.Platform, x.Label, x.URL, x.Icon, x.SortOrder, b2i(x.IsActive))
+		`UPDATE social_links SET platform=?, label=?, url=?, copy_text=?, icon=?, sort_order=?, is_active=? WHERE id=?`,
+		`INSERT INTO social_links (platform, label, url, copy_text, icon, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		x.Platform, x.Label, x.URL, x.CopyText, x.Icon, x.SortOrder, b2i(x.IsActive))
 	x.ID = id
 	return err
 }
 
-// LinkClick increments the counter and returns the target URL of an active link.
-func (s *Store) LinkClick(ctx context.Context, id int64) (string, error) {
-	var url string
-	err := s.DB.QueryRowContext(ctx, `UPDATE social_links SET clicks = clicks + 1 WHERE id = ? AND is_active = 1 RETURNING url`, id).Scan(&url)
+// LinkClick increments the counter of an active link. It returns the target
+// URL, and copy=true for links that copy text instead of opening a page.
+func (s *Store) LinkClick(ctx context.Context, id int64) (url string, copy bool, err error) {
+	var text string
+	err = s.DB.QueryRowContext(ctx, `UPDATE social_links SET clicks = clicks + 1 WHERE id = ? AND is_active = 1 RETURNING url, copy_text`, id).Scan(&url, &text)
 	if err == sql.ErrNoRows {
-		return "", ErrNotFound
+		return "", false, ErrNotFound
 	}
-	return url, err
+	return url, text != "", err
 }
 
 // ---------------------------------------------------------------- badges

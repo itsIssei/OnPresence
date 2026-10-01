@@ -77,8 +77,8 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 			return res.LastInsertId()
 		}
 		for _, x := range e.Links {
-			if _, err := ins(`INSERT INTO social_links (id, platform, label, url, icon, sort_order, is_active, clicks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-				x.ID, x.Platform, x.Label, x.URL, x.Icon, x.SortOrder, b2i(x.IsActive), x.Clicks); err != nil {
+			if _, err := ins(`INSERT INTO social_links (id, platform, label, url, copy_text, icon, sort_order, is_active, clicks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Platform, x.Label, x.URL, x.CopyText, x.Icon, x.SortOrder, b2i(x.IsActive), x.Clicks); err != nil {
 				return err
 			}
 		}

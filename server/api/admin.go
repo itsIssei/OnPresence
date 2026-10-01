@@ -332,7 +332,11 @@ func validateLink(v validationError, x *models.SocialLink) {
 	text(v, "platform", &x.Platform, 0, 30)
 	text(v, "icon", &x.Icon, 0, 60)
 	x.URL = strings.TrimSpace(x.URL)
-	if !models.IsLinkURL(x.URL) {
+	text(v, "copy_text", &x.CopyText, 0, 100)
+	if x.CopyText != "" {
+		// Copy links do not navigate; any URL left in the form is dropped.
+		x.URL = ""
+	} else if !models.IsLinkURL(x.URL) {
 		v.add("url", "Use an https:// or mailto: link")
 	}
 }

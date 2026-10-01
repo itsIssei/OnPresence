@@ -460,3 +460,25 @@ func TestOGImage(t *testing.T) {
 }
 
 var pngMagic = string([]byte{0x89, 'P', 'N', 'G'})
+
+func TestCopyTextLink(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	res, body := e.do("POST", "/api/v1/admin/links", map[string]any{"label": "Discord", "icon": "discord", "copy_text": "@nova", "url": "https://ignored.example"})
+	if res.StatusCode != 201 || !strings.Contains(body, `"copy_text":"@nova"`) || !strings.Contains(body, `"url":""`) {
+		t.Fatalf("create: %d %s", res.StatusCode, body)
+	}
+	var link struct{ ID int64 }
+	json.Unmarshal([]byte(body), &link)
+	// A click is counted but nothing is opened.
+	if res, _ := e.do("GET", "/go/"+jsonNum(link.ID), nil); res.StatusCode != 204 || res.Header.Get("Location") != "" {
+		t.Fatalf("copy link click: %d", res.StatusCode)
+	}
+	if _, pub := e.do("GET", "/api/v1/profile", nil); !strings.Contains(pub, `"copy_text":"@nova"`) {
+		t.Fatalf("public profile: %s", pub)
+	}
+	// Neither a URL nor text: rejected.
+	if res, _ := e.do("POST", "/api/v1/admin/links", map[string]any{"label": "Empty", "url": ""}); res.StatusCode != 400 {
+		t.Fatalf("empty link accepted: %d", res.StatusCode)
+	}
+}

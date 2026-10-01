@@ -171,20 +171,27 @@ func (s *Server) postView(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]int64{"views": n})
 }
 
-// linkRedirect counts a click and redirects to the stored link URL.
+// linkRedirect counts a click and redirects to the stored link URL (or
+// answers 204 for copy-text links).
 func (s *Server) linkRedirect(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	url, err := s.store.LinkClick(r.Context(), id)
-	if errors.Is(err, store.ErrNotFound) || (err == nil && !models.IsLinkURL(url)) {
+	url, copyLink, err := s.store.LinkClick(r.Context(), id)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && !copyLink && !models.IsLinkURL(url)) {
 		http.NotFound(w, r)
 		return
 	}
 	if err != nil {
 		serverError(w, r, err)
+		return
+	}
+	if copyLink {
+		// The page copies the text itself; this request only counts the click.
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")

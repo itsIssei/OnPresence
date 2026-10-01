@@ -182,6 +182,7 @@ type SocialLink struct {
 	Platform  string `json:"platform"`
 	Label     string `json:"label"`
 	URL       string `json:"url"`
+	CopyText  string `json:"copy_text"` // when set, a click copies this text instead of opening URL
 	Icon      string `json:"icon"`
 	SortOrder int    `json:"sort_order"`
 	IsActive  bool   `json:"is_active"`
