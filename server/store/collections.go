@@ -15,12 +15,13 @@ var ErrNotFound = errors.New("not found")
 // Collection names accepted by Delete and Reorder. Keys are API names, values
 // are table names; anything else is rejected before it reaches SQL.
 var collectionTables = map[string]string{
-	"links":     "social_links",
-	"badges":    "badges",
-	"games":     "games",
-	"media":     "media",
-	"playlists": "playlists",
-	"referrals": "referrals",
+	"links":      "social_links",
+	"badges":     "badges",
+	"games":      "games",
+	"media":      "media",
+	"playlists":  "playlists",
+	"referrals":  "referrals",
+	"shortlinks": "short_links",
 }
 
 func tableFor(collection string) (string, error) {

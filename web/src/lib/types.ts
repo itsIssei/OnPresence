@@ -198,6 +198,19 @@ export interface Referral {
   created_at: string;
 }
 
+/** <domain>/<slug> redirects to url. */
+export interface ShortLink {
+  id: number;
+  slug: string;
+  url: string;
+  /** Private reminder, only shown in the dashboard. */
+  note: string;
+  clicks: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface Vault {
   stats: { games: number; anime: number; manga: number; playlists: number };
   referrals: Referral[];

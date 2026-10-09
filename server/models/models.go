@@ -348,6 +348,18 @@ type Session struct {
 	Current   bool   `json:"current"`
 }
 
+// ShortLink redirects /<slug> on the site's own domain to URL.
+type ShortLink struct {
+	ID        int64  `json:"id"`
+	Slug      string `json:"slug"`
+	URL       string `json:"url"`
+	Note      string `json:"note"` // private reminder, only shown in the dashboard
+	Clicks    int64  `json:"clicks"`
+	IsActive  bool   `json:"is_active"`
+	SortOrder int    `json:"sort_order"`
+	CreatedAt string `json:"created_at"`
+}
+
 // ExportVersion is the current content export format.
 const ExportVersion = 1
 
@@ -363,4 +375,7 @@ type Export struct {
 	Media     []Media      `json:"media"`
 	Playlists []Playlist   `json:"playlists"`
 	Referrals []Referral   `json:"referrals"`
+	// ShortLinks is nil in files exported before short links existed;
+	// restoring such a file keeps the current short links.
+	ShortLinks []ShortLink `json:"short_links"`
 }

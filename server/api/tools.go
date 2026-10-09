@@ -212,7 +212,7 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	const maxItems = 2000
-	if len(e.Links)+len(e.Badges)+len(e.Games)+len(e.Media)+len(e.Playlists)+len(e.Referrals) > maxItems {
+	if len(e.Links)+len(e.Badges)+len(e.Games)+len(e.Media)+len(e.Playlists)+len(e.Referrals)+len(e.ShortLinks) > maxItems {
 		writeError(w, http.StatusBadRequest, "Too many items in the file")
 		return
 	}
@@ -243,6 +243,20 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 	for i := range e.Referrals {
 		check("referrals", i, func(iv validationError) { validateReferral(iv, &e.Referrals[i]) })
 	}
+	slugs := map[string]bool{}
+	for i := range e.ShortLinks {
+		check("short_links", i, func(iv validationError) {
+			x := &e.ShortLinks[i]
+			validateShortLink(iv, x)
+			switch {
+			case x.Slug == "":
+				iv.add("slug", "Required")
+			case slugs[x.Slug]:
+				iv.add("slug", "This name is used twice in the file")
+			}
+			slugs[x.Slug] = true
+		})
+	}
 	if v.respond(w) {
 		return
 	}
@@ -252,6 +266,7 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 	dedupeIDs(e.Media, func(x *models.Media) *int64 { return &x.ID })
 	dedupeIDs(e.Playlists, func(x *models.Playlist) *int64 { return &x.ID })
 	dedupeIDs(e.Referrals, func(x *models.Referral) *int64 { return &x.ID })
+	dedupeIDs(e.ShortLinks, func(x *models.ShortLink) *int64 { return &x.ID })
 
 	keep := max(s.cfg.BackupKeep, 7)
 	if _, err := s.store.Backup(r.Context(), s.cfg.BackupDir(), keep); err != nil {

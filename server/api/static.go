@@ -15,7 +15,8 @@ var startTime = time.Now()
 
 // serveWeb serves the built frontend. Hashed files under /assets/ are cached
 // forever; HTML is always revalidated. Unknown paths fall back to the SPA
-// shell (index.html or admin.html).
+// shell (index.html or admin.html), after a single-segment path is tried as
+// a short link.
 func (s *Server) serveWeb(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
@@ -48,6 +49,9 @@ func (s *Server) serveWeb(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.Contains(path.Base(p), ".") {
 		http.NotFound(w, r)
+		return
+	}
+	if !strings.Contains(p, "/") && s.shortRedirect(w, r, p) {
 		return
 	}
 	s.serveIndex(w, r)

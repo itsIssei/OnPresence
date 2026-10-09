@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -527,5 +528,136 @@ func TestEntrySizeAndRestore(t *testing.T) {
 	_, links := e.do("GET", "/api/v1/admin/links", nil)
 	if !strings.Contains(refs, `"size":"large"`) || !strings.Contains(links, `"is_featured":true`) || !strings.Contains(links, `"icon_url":"/uploads/i.png"`) {
 		t.Fatalf("after restore: %s %s", refs, links)
+	}
+}
+
+func TestShortLinks(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	res, body := e.do("POST", "/api/v1/admin/shortlinks", map[string]any{"slug": "GH", "url": "https://github.com/example", "note": "code"})
+	if res.StatusCode != 201 || !strings.Contains(body, `"slug":"gh"`) {
+		t.Fatalf("create: %d %s", res.StatusCode, body)
+	}
+	// Case-insensitive, counted, not cached.
+	res, _ = e.do("GET", "/Gh", nil)
+	if res.StatusCode != 302 || res.Header.Get("Location") != "https://github.com/example" || res.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("redirect: %d %q %q", res.StatusCode, res.Header.Get("Location"), res.Header.Get("Cache-Control"))
+	}
+	if _, list := e.do("GET", "/api/v1/admin/shortlinks", nil); !strings.Contains(list, `"clicks":1`) {
+		t.Fatalf("clicks: %s", list)
+	}
+	for name, payload := range map[string]map[string]any{
+		"duplicate":  {"slug": "gh", "url": "https://example.com"},
+		"reserved":   {"slug": "Admin", "url": "https://example.com"},
+		"bad chars":  {"slug": "a.b", "url": "https://example.com"},
+		"slash":      {"slug": "a/b", "url": "https://example.com"},
+		"too long":   {"slug": strings.Repeat("a", 33), "url": "https://example.com"},
+		"script url": {"slug": "x1", "url": "javascript:alert(1)"},
+		"http url":   {"slug": "x2", "url": "http://example.com"},
+		"no scheme":  {"slug": "x3", "url": "//example.com"},
+		"self":       {"slug": "loop", "url": "/loop"},
+	} {
+		if res, body := e.do("POST", "/api/v1/admin/shortlinks", payload); res.StatusCode != 400 {
+			t.Errorf("%s accepted: %d %s", name, res.StatusCode, body)
+		}
+	}
+	// Signed out, nothing can be created.
+	anon := &http.Client{}
+	req, _ := http.NewRequest("POST", e.srv.URL+"/api/v1/admin/shortlinks", strings.NewReader(`{"slug":"open","url":"https://example.com"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", e.srv.URL)
+	if res, err := anon.Do(req); err != nil || res.StatusCode != 401 {
+		t.Fatalf("anonymous create: %v %v", res, err)
+	}
+	// Empty name gets a random one.
+	_, body = e.do("POST", "/api/v1/admin/shortlinks", map[string]any{"url": "https://example.com/r"})
+	var made struct {
+		ID   int64
+		Slug string
+	}
+	json.Unmarshal([]byte(body), &made)
+	if len(made.Slug) != 4 {
+		t.Fatalf("random slug: %s", body)
+	}
+	if res, _ := e.do("GET", "/"+made.Slug, nil); res.StatusCode != 302 {
+		t.Fatalf("random slug redirect: %d", res.StatusCode)
+	}
+	// Switched off or unknown names, reserved names and deeper paths fall back to the page.
+	e.do("PUT", "/api/v1/admin/shortlinks/"+jsonNum(made.ID), map[string]any{"slug": made.Slug, "url": "https://example.com/r", "is_active": false})
+	for _, p := range []string{"/" + made.Slug, "/nope", "/vault", "/gh/extra"} {
+		if res, body := e.do("GET", p, nil); res.StatusCode != 200 || !strings.Contains(body, "<html>") {
+			t.Errorf("%s should serve the page: %d", p, res.StatusCode)
+		}
+	}
+	if _, list := e.do("GET", "/api/v1/admin/shortlinks", nil); !strings.Contains(list, `"clicks":1,"is_active":false`) {
+		t.Errorf("inactive link counted a click: %s", list)
+	}
+}
+
+func TestShortLinksExportRestore(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	e.do("POST", "/api/v1/admin/shortlinks", map[string]any{"slug": "yt", "url": "https://example.com/video", "note": "channel"})
+	e.do("GET", "/yt", nil)
+	// Backups are named by the second, so clear them between restores.
+	restore := func(data any) (*http.Response, string) {
+		os.RemoveAll(e.cfg.BackupDir())
+		return e.do("POST", "/api/v1/admin/restore", data)
+	}
+	_, body := e.do("GET", "/api/v1/admin/export", nil)
+	var exp map[string]any
+	json.Unmarshal([]byte(body), &exp)
+	if !strings.Contains(body, `"short_links":[{`) {
+		t.Fatalf("export: %s", body)
+	}
+	// A file from before short links existed keeps the current ones.
+	old := map[string]any{}
+	for k, v := range exp {
+		if k != "short_links" {
+			old[k] = v
+		}
+	}
+	if res, body := restore(old); res.StatusCode != 200 {
+		t.Fatalf("restore without short links: %d %s", res.StatusCode, body)
+	}
+	if res, _ := e.do("GET", "/yt", nil); res.StatusCode != 302 {
+		t.Fatalf("short link lost by an old export: %d", res.StatusCode)
+	}
+	// Round trip: delete, restore, same slug, target, note and clicks.
+	_, list := e.do("GET", "/api/v1/admin/shortlinks", nil)
+	var rows []struct{ ID int64 }
+	json.Unmarshal([]byte(list), &rows)
+	e.do("DELETE", "/api/v1/admin/shortlinks/"+jsonNum(rows[0].ID), nil)
+	if res, body := restore(exp); res.StatusCode != 200 {
+		t.Fatalf("restore: %d %s", res.StatusCode, body)
+	}
+	_, list = e.do("GET", "/api/v1/admin/shortlinks", nil)
+	for _, want := range []string{`"slug":"yt"`, `"url":"https://example.com/video"`, `"note":"channel"`, `"clicks":1`} {
+		if !strings.Contains(list, want) {
+			t.Fatalf("after restore, missing %s: %s", want, list)
+		}
+	}
+	if res, _ := e.do("GET", "/yt", nil); res.StatusCode != 302 {
+		t.Fatalf("redirect after restore: %d", res.StatusCode)
+	}
+	// Bad entries are rejected before anything is replaced.
+	for name, items := range map[string][]map[string]any{
+		"reserved":  {{"slug": "api", "url": "https://example.com"}},
+		"unsafe":    {{"slug": "ok", "url": "javascript:alert(1)"}},
+		"no slug":   {{"url": "https://example.com"}},
+		"duplicate": {{"slug": "a", "url": "https://example.com"}, {"slug": "A", "url": "https://example.com"}},
+	} {
+		exp["short_links"] = items
+		if res, body := restore(exp); res.StatusCode != 400 || !strings.Contains(body, "short_links[") {
+			t.Errorf("%s restored: %d %s", name, res.StatusCode, body)
+		}
+	}
+	// Repeated ids do not break the restore.
+	exp["short_links"] = []map[string]any{{"id": 1, "slug": "a", "url": "https://example.com/a", "is_active": true}, {"id": 1, "slug": "b", "url": "https://example.com/b", "is_active": true}}
+	if res, body := restore(exp); res.StatusCode != 200 {
+		t.Fatalf("restore with repeated ids: %d %s", res.StatusCode, body)
+	}
+	if res, _ := e.do("GET", "/b", nil); res.Header.Get("Location") != "https://example.com/b" {
+		t.Fatalf("after id dedupe: %d", res.StatusCode)
 	}
 }

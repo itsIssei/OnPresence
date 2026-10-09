@@ -22,6 +22,16 @@ var migrations = []migration{
 	{3, "featured links", execSQL(`ALTER TABLE social_links ADD COLUMN icon_url TEXT NOT NULL DEFAULT '';
 		ALTER TABLE social_links ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0`)},
 	{4, "entry sizes", execSQL(`ALTER TABLE referrals ADD COLUMN size TEXT NOT NULL DEFAULT 'medium'`)},
+	{5, "short links", execSQL(`CREATE TABLE short_links (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		slug TEXT NOT NULL UNIQUE,
+		url TEXT NOT NULL,
+		note TEXT NOT NULL DEFAULT '',
+		clicks INTEGER NOT NULL DEFAULT 0,
+		is_active INTEGER NOT NULL DEFAULT 1,
+		sort_order INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL DEFAULT ''
+	)`)},
 }
 
 func execSQL(q string) func(context.Context, *sql.Tx) error {

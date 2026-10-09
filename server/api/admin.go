@@ -185,6 +185,8 @@ func (s *Server) listCollection(c string) http.HandlerFunc {
 			out, err = s.store.Playlists(ctx)
 		case "referrals":
 			out, err = s.store.Referrals(ctx, false)
+		case "shortlinks":
+			out, err = s.store.ShortLinks(ctx)
 		}
 		if err != nil {
 			serverError(w, r, err)
@@ -267,12 +269,24 @@ func (s *Server) saveCollection(c string, update bool) http.HandlerFunc {
 			x.ID = id
 			validateReferral(v, x)
 			item, save = x, func(ctx context.Context) error { return s.store.SaveReferral(ctx, x) }
+		case "shortlinks":
+			x := &models.ShortLink{IsActive: true}
+			if !decode(w, r, x, 16<<10) {
+				return
+			}
+			x.ID = id
+			validateShortLink(v, x)
+			item, save = x, func(context.Context) error { return s.saveShortLink(r, v, x) }
 		}
 		if v.respond(w) {
 			return
 		}
 		if err := save(r.Context()); err != nil {
 			serverError(w, r, err)
+			return
+		}
+		// A save can still report a field error (a short link name that is taken).
+		if v.respond(w) {
 			return
 		}
 		status := http.StatusOK

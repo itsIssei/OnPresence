@@ -103,7 +103,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/admin/snapshots/{id}/restore", a(s.restoreSnapshot))
 
 	// Admin: collections
-	for _, c := range []string{"links", "badges", "games", "media", "playlists", "referrals"} {
+	for _, c := range []string{"links", "badges", "games", "media", "playlists", "referrals", "shortlinks"} {
 		mux.HandleFunc("GET /api/v1/admin/"+c, a(s.listCollection(c)))
 		mux.HandleFunc("POST /api/v1/admin/"+c, a(s.saveCollection(c, false)))
 		mux.HandleFunc("PUT /api/v1/admin/"+c+"/{id}", a(s.saveCollection(c, true)))

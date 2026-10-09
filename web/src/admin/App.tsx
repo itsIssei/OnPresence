@@ -12,6 +12,7 @@ import {
   Medal,
   Palette,
   Plug,
+  Scissors,
   Shield,
   Sparkles,
   UserRound,
@@ -47,6 +48,7 @@ import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { BadgesPage, LinksPage } from "./pages/LinksPage";
 import { CatalogPage, MediaPage, OverviewPage, SecurityPage } from "./pages/MiscPages";
 import { ProfilePage } from "./pages/ProfilePage";
+import { ShortLinksPage } from "./pages/ShortLinksPage";
 import { VaultPage } from "./pages/VaultPage";
 
 export function App() {
@@ -201,6 +203,7 @@ const NAV = [
       { href: "/appearance", label: "Appearance", icon: Palette, preview: true },
       { href: "/integrations", label: "Integrations", icon: Plug, preview: true },
       { href: "/links", label: "Links", icon: Link2, preview: true },
+      { href: "/short", label: "Short links", icon: Scissors },
       { href: "/badges", label: "Badges", icon: Medal, preview: true },
     ],
   },
@@ -312,6 +315,7 @@ function Shell({ username }: { username: string }) {
                   <Route path="/appearance" component={AppearancePage} />
                   <Route path="/integrations" component={IntegrationsPage} />
                   <Route path="/links" component={LinksPage} />
+                  <Route path="/short" component={ShortLinksPage} />
                   <Route path="/badges" component={BadgesPage} />
                   <Route path="/vault" component={VaultPage} />
                   <Route path="/media" component={MediaPage} />

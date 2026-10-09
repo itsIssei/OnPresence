@@ -13,6 +13,7 @@
 - **Profile card**: **animated avatar decorations** and **profile effects** (with importable packs), themes, fonts, name logos, badges, links, background video, soundtrack, entry screen, and a 3D tilt.
 - **Live presence**: Discord status and activity (via [Lanyard](https://github.com/Phineas/lanyard)), Spotify, YouTube Music, **Last.fm now playing**, and Steam.
 - **Display case**: games (Steam/SteamDB import), anime and manga (AniList import), playlists (Spotify/YouTube import), projects and referral codes. You can hide each section on its own.
+- **Short links**: your own link shortener. `your-domain/yt` redirects to any URL you save, and visits are counted.
 - **Dashboard**: live preview, media library, first-run setup, **two-factor login (TOTP)**, profile history, JSON export/restore, and daily backups.
 - **Small and private**: Go + SQLite, about 60 KB of JavaScript on the public page, no tracking, no external database.
 

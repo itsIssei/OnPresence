@@ -33,11 +33,14 @@ func (s *Store) ExportContent(ctx context.Context) (*models.Export, error) {
 	if e.Referrals, err = s.Referrals(ctx, false); err != nil {
 		return nil, err
 	}
+	if e.ShortLinks, err = s.ShortLinks(ctx); err != nil {
+		return nil, err
+	}
 	return e, nil
 }
 
 // ImportContent replaces the profile and every collection with e, in one
-// transaction. The caller validates e first. API keys, the admin account,
+// transaction. Short links are only replaced when the file has them. The caller validates e first. API keys, the admin account,
 // uploads and counters are kept. The replaced profile is snapshotted.
 func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 	e.Profile.Settings.Normalize()
@@ -60,6 +63,11 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 		}
 		for _, t := range []string{"tracks", "playlists", "social_links", "badges", "games", "media", "referrals"} {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM `+t); err != nil {
+				return err
+			}
+		}
+		if e.ShortLinks != nil {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM short_links`); err != nil {
 				return err
 			}
 		}
@@ -103,6 +111,12 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 		for _, x := range e.Referrals {
 			if _, err := ins(`INSERT INTO referrals (id, kind, title, game_name, ref_code, ref_url, image_url, description, reward_text, badge, display_style, size, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				x.ID, x.Kind, x.Title, x.GameName, x.RefCode, x.RefURL, x.ImageURL, x.Description, x.RewardText, x.Badge, x.DisplayStyle, x.Size, x.SortOrder, b2i(x.IsActive), orNow(x.CreatedAt)); err != nil {
+				return err
+			}
+		}
+		for _, x := range e.ShortLinks {
+			if _, err := ins(`INSERT INTO short_links (id, slug, url, note, clicks, is_active, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Slug, x.URL, x.Note, x.Clicks, b2i(x.IsActive), x.SortOrder, orNow(x.CreatedAt)); err != nil {
 				return err
 			}
 		}

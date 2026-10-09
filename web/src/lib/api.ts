@@ -9,6 +9,7 @@ import type {
   PublicProfile,
   Referral,
   Session,
+  ShortLink,
   Snapshot,
   SocialLink,
   Upload,
@@ -56,7 +57,7 @@ function safeJSON(text: string): unknown {
 
 const get = <T,>(p: string) => request<T>("GET", p);
 
-export type CollectionName = "links" | "badges" | "games" | "media" | "playlists" | "referrals";
+export type CollectionName = "links" | "badges" | "games" | "media" | "playlists" | "referrals" | "shortlinks";
 
 export interface CollectionTypes {
   links: SocialLink;
@@ -65,6 +66,7 @@ export interface CollectionTypes {
   media: Media;
   playlists: Playlist;
   referrals: Referral;
+  shortlinks: ShortLink;
 }
 
 export const api = {

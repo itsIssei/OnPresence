@@ -24,6 +24,17 @@ The Steam Web API key and the Last.fm API key are entered in **Dashboard → Int
 - Steam: <https://steamcommunity.com/dev/apikey>. Optional. Without it, the public community profile is used.
 - Last.fm: <https://www.last.fm/api/account/create>. Required for "now playing".
 
+## Short links
+
+**Dashboard → Short links** turns the site into a small link shortener: `https://your-domain/<name>` answers with a `302` redirect to the saved URL and counts the visit.
+
+- A name is 1 to 32 characters: lowercase letters, digits, `-` and `_`. Capital letters in the address still work. Leave the name empty to get a random 4-character one.
+- Names the site itself uses (`admin`, `api`, `vault`, `go`, `uploads`, `img`, `assets`, `data`, `healthz`, `og`, `index`, `robots`, `manifest`, `favicon`) cannot be taken.
+- The target must be an `https://` link, a `mailto:` link or a path on the site.
+- A link that is switched off, or a name that does not exist, shows the card as usual.
+- Only the signed-in owner can create short links, so the domain cannot be used as an open redirector.
+- Short links are part of the JSON export and restore. Restoring a file made before this feature keeps the current short links.
+
 ## Security notes
 
 - The dashboard uses a `SameSite=Strict`, `HttpOnly` cookie. Cross-site writes are blocked by `Sec-Fetch-Site` / `Origin` checks.
