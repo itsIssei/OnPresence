@@ -91,6 +91,10 @@ export interface SocialLink {
   /** When set, a click copies this text instead of opening the URL. */
   copy_text: string;
   icon: string;
+  /** Custom icon image (upload or https). Wins over the brand icon. */
+  icon_url: string;
+  /** Shown as a labeled box above the icon row (max 2). */
+  is_featured: boolean;
   sort_order: number;
   is_active: boolean;
   clicks: number;
@@ -187,6 +191,8 @@ export interface Referral {
   reward_text: string;
   badge: string;
   display_style: "banner" | "card";
+  /** Tile size in the display case. */
+  size: "small" | "medium" | "large";
   sort_order: number;
   is_active: boolean;
   created_at: string;

@@ -482,3 +482,50 @@ func TestCopyTextLink(t *testing.T) {
 		t.Fatalf("empty link accepted: %d", res.StatusCode)
 	}
 }
+
+func TestFeaturedLinksLimit(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	add := func(label string) (*http.Response, string) {
+		return e.do("POST", "/api/v1/admin/links", map[string]any{"label": label, "url": "https://example.com/" + label, "is_featured": true, "icon_url": "/uploads/icon.png"})
+	}
+	for _, l := range []string{"one", "two"} {
+		if res, body := add(l); res.StatusCode != 201 || !strings.Contains(body, `"is_featured":true`) {
+			t.Fatalf("featured %s: %d %s", l, res.StatusCode, body)
+		}
+	}
+	if res, body := add("three"); res.StatusCode != 400 || !strings.Contains(body, "is_featured") {
+		t.Fatalf("third featured link: %d %s", res.StatusCode, body)
+	}
+	if res, _ := e.do("POST", "/api/v1/admin/links", map[string]any{"label": "bad", "url": "https://example.com", "icon_url": "javascript:alert(1)"}); res.StatusCode != 400 {
+		t.Fatalf("unsafe icon_url accepted: %d", res.StatusCode)
+	}
+	if res, _ := e.do("POST", "/api/v1/admin/import/favicon?url=http://127.0.0.1/", nil); res.StatusCode != 502 {
+		t.Fatalf("local favicon fetch: %d", res.StatusCode)
+	}
+}
+
+func TestEntrySizeAndRestore(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	res, body := e.do("POST", "/api/v1/admin/referrals", map[string]any{"kind": "project", "title": "Big", "size": "large"})
+	if res.StatusCode != 201 || !strings.Contains(body, `"size":"large"`) {
+		t.Fatalf("size: %d %s", res.StatusCode, body)
+	}
+	if _, body := e.do("POST", "/api/v1/admin/referrals", map[string]any{"title": "Odd", "size": "huge"}); !strings.Contains(body, `"size":"medium"`) {
+		t.Fatalf("unknown size should fall back: %s", body)
+	}
+	e.do("POST", "/api/v1/admin/links", map[string]any{"label": "Star", "url": "https://example.com", "is_featured": true, "icon_url": "/uploads/i.png"})
+	// Export and restore keep the new fields.
+	_, exp := e.do("GET", "/api/v1/admin/export", nil)
+	var data map[string]any
+	json.Unmarshal([]byte(exp), &data)
+	if res, body := e.do("POST", "/api/v1/admin/restore", data); res.StatusCode != 200 {
+		t.Fatalf("restore: %d %s", res.StatusCode, body)
+	}
+	_, refs := e.do("GET", "/api/v1/admin/referrals", nil)
+	_, links := e.do("GET", "/api/v1/admin/links", nil)
+	if !strings.Contains(refs, `"size":"large"`) || !strings.Contains(links, `"is_featured":true`) || !strings.Contains(links, `"icon_url":"/uploads/i.png"`) {
+		t.Fatalf("after restore: %s %s", refs, links)
+	}
+}

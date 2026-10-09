@@ -120,6 +120,7 @@ export const api = {
   importAniList: (q: string, type: "ANIME" | "MANGA") =>
     get<AniListResult[]>(`/api/v1/admin/import/anilist?q=${encodeURIComponent(q)}&type=${type}`),
   importGames: (q: string) => get<GameSearchResult[]>(`/api/v1/admin/import/games?q=${encodeURIComponent(q)}`),
+  importFavicon: (url: string) => request<Upload>("POST", `/api/v1/admin/import/favicon?url=${encodeURIComponent(url)}`),
   importMusic: (url: string) => get<MusicMeta>(`/api/v1/admin/import/music?url=${encodeURIComponent(url)}`),
 
   syncCatalog: (payload: { decorations?: unknown[]; profileEffects?: unknown[] }) =>
@@ -148,6 +149,10 @@ export interface GameSearchResult {
   cover_image: string;
   images: { label: string; url: string }[];
   genres: string[] | null;
+  developer: string;
+  year: string;
+  description: string;
+  metacritic: number;
   source: string;
 }
 

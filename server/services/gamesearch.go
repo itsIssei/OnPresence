@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/url"
 	"regexp"
@@ -34,8 +35,16 @@ type GameSearchResult struct {
 	CoverImage string      `json:"cover_image"`
 	Images     []GameImage `json:"images"`
 	Genres     []string    `json:"genres"`
-	Source     string      `json:"source"`
+	// Filled when one app is looked up (by id or store link), not for name searches.
+	Developer   string `json:"developer"`
+	Year        string `json:"year"`
+	Description string `json:"description"`
+	Metacritic  int    `json:"metacritic"`
+	Source      string `json:"source"`
 }
+
+// yearIn finds the year in Steam release dates like "25 Feb, 2022".
+var yearIn = regexp.MustCompile(`\b(19|20)\d{2}\b`)
 
 // appIDInput matches a bare Steam app id or a Steam store / SteamDB URL.
 var appIDInput = regexp.MustCompile(`^(?:\d{1,10}|https?://(?:store\.steampowered\.com|steamdb\.info|steamcommunity\.com)/app/(\d{1,10})\b.*)$`)
@@ -98,16 +107,24 @@ func SearchGames(query string) ([]GameSearchResult, error) {
 type steamAppDetailsResp map[string]struct {
 	Success bool `json:"success"`
 	Data    struct {
-		Name        string `json:"name"`
-		HeaderImage string `json:"header_image"`
-		Genres      []struct {
+		Name             string `json:"name"`
+		HeaderImage      string `json:"header_image"`
+		ShortDescription string `json:"short_description"`
+		Genres           []struct {
 			Description string `json:"description"`
 		} `json:"genres"`
+		Developers  []string `json:"developers"`
+		ReleaseDate struct {
+			Date string `json:"date"`
+		} `json:"release_date"`
+		Metacritic struct {
+			Score int `json:"score"`
+		} `json:"metacritic"`
 	} `json:"data"`
 }
 
 func steamAppDetails(id int) (GameSearchResult, error) {
-	u := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%d&l=english&filters=basic,genres", id)
+	u := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%d&l=english&filters=basic,genres,developers,release_date,metacritic", id)
 	resp, err := apiClient.Get(u)
 	if err != nil {
 		return GameSearchResult{}, fmt.Errorf("failed to contact steam store: %w", err)
@@ -129,5 +146,11 @@ func steamAppDetails(id int) (GameSearchResult, error) {
 	for _, g := range app.Data.Genres {
 		r.Genres = append(r.Genres, g.Description)
 	}
+	if len(app.Data.Developers) > 0 {
+		r.Developer = app.Data.Developers[0]
+	}
+	r.Year = yearIn.FindString(app.Data.ReleaseDate.Date)
+	r.Description = html.UnescapeString(app.Data.ShortDescription)
+	r.Metacritic = app.Data.Metacritic.Score
 	return r, nil
 }

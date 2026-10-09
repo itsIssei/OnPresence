@@ -65,45 +65,72 @@
       "label": "GitHub",
       "url": "https://github.com",
       "icon": "github",
+      "copy_text": "",
       "sort_order": 0,
       "is_active": true,
-      "clicks": 0
+      "clicks": 0,
+      "icon_url": "",
+      "is_featured": true
+    },
+    {
+      "platform": "discord",
+      "label": "Discord",
+      "url": "",
+      "icon": "discord",
+      "copy_text": "@nova.pixels",
+      "sort_order": 1,
+      "is_active": true,
+      "clicks": 0,
+      "icon_url": "",
+      "is_featured": true
     },
     {
       "platform": "twitch",
       "label": "Twitch",
       "url": "https://twitch.tv",
       "icon": "twitch",
-      "sort_order": 1,
+      "copy_text": "",
+      "sort_order": 2,
       "is_active": true,
-      "clicks": 0
+      "clicks": 0,
+      "icon_url": "",
+      "is_featured": false
     },
     {
       "platform": "youtube",
       "label": "YouTube",
       "url": "https://youtube.com",
       "icon": "youtube",
-      "sort_order": 2,
+      "copy_text": "",
+      "sort_order": 3,
       "is_active": true,
-      "clicks": 0
+      "clicks": 0,
+      "icon_url": "",
+      "is_featured": false
     },
     {
       "platform": "bluesky",
       "label": "Bluesky",
       "url": "https://bsky.app",
       "icon": "bluesky",
-      "sort_order": 3,
+      "copy_text": "",
+      "sort_order": 4,
       "is_active": true,
-      "clicks": 0
+      "clicks": 0,
+      "icon_url": "",
+      "is_featured": false
     },
     {
       "platform": "kofi",
       "label": "Ko-fi",
       "url": "https://ko-fi.com",
       "icon": "kofi",
-      "sort_order": 4,
+      "copy_text": "",
+      "sort_order": 5,
       "is_active": true,
-      "clicks": 0
+      "clicks": 0,
+      "icon_url": "",
+      "is_featured": false
     }
   ],
   "badges": [
@@ -299,6 +326,7 @@
   "referrals": [
     {
       "kind": "project",
+      "size": "large",
       "title": "Pixel Palette",
       "game_name": "Web tool",
       "ref_code": "",
@@ -313,6 +341,7 @@
     },
     {
       "kind": "project",
+      "size": "medium",
       "title": "Lobby Bot",
       "game_name": "Chat bot",
       "ref_code": "",
@@ -327,6 +356,7 @@
     },
     {
       "kind": "referral",
+      "size": "small",
       "title": "Cloudlet Hosting",
       "game_name": "Hosting",
       "ref_code": "NOVA20",

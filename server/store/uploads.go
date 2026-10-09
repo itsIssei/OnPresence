@@ -70,7 +70,8 @@ func (s *Store) UploadInUse(ctx context.Context, url string) (bool, error) {
 		(SELECT COUNT(*) FROM playlists WHERE cover_image = ?1 OR audio_url = ?1) +
 		(SELECT COUNT(*) FROM tracks WHERE audio_url = ?1) +
 		(SELECT COUNT(*) FROM referrals WHERE image_url = ?1) +
-		(SELECT COUNT(*) FROM badges WHERE icon = ?1)`, url).Scan(&n)
+		(SELECT COUNT(*) FROM badges WHERE icon = ?1) +
+		(SELECT COUNT(*) FROM social_links WHERE icon_url = ?1)`, url).Scan(&n)
 	return n > 0, err
 }
 

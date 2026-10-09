@@ -211,7 +211,7 @@ const gameFields: FieldDef<Game>[] = [
   { key: "title", label: "Title", type: "text", maxLength: 120 },
   { key: "subtitle", label: "Subtitle", type: "text", maxLength: 120 },
   { key: "cover_image", label: "Cover (landscape)", type: "image" },
-  { key: "rating", label: "Rating", type: "text", maxLength: 40, hint: "e.g. 10/10" },
+  { key: "rating", label: "Rating", type: "rating" },
   { key: "badge_type", label: "Verdict", type: "select", options: { masterpiece: "Masterpiece", good: "Good", okay: "Okay", trash: "Trash" } },
   { key: "category", label: "Genre", type: "text", maxLength: 40 },
   { key: "hours_played", label: "Hours played", type: "number" },
@@ -251,7 +251,37 @@ function GamesManager() {
 
 function SteamResult({ r, apply }: { r: GameSearchResult; apply: (p: Partial<Game>) => void }) {
   const [broken, setBroken] = useState<Set<string>>(new Set());
-  const genre = (r.genres ?? []).slice(0, 2).join(" / ");
+  // Name searches return no details; looking the app up by id does.
+  const [details, setDetails] = useState<GameSearchResult | null>(r.genres?.length ? r : null);
+  const [busy, setBusy] = useState(false);
+  const d = details ?? r;
+  const genre = (d.genres ?? []).slice(0, 2).join(" / ");
+  const facts = [genre, d.developer, d.year, d.metacritic ? `Metacritic ${d.metacritic}` : ""].filter(Boolean).join(" · ");
+
+  const useAll = async () => {
+    let full = details;
+    if (!full) {
+      setBusy(true);
+      try {
+        full = (await api.importGames(String(r.id)))[0] ?? null;
+        setDetails(full);
+      } catch {
+        full = null;
+      } finally {
+        setBusy(false);
+      }
+    }
+    const src = full ?? r;
+    const g = (src.genres ?? []).slice(0, 2).join(" / ");
+    apply({
+      title: src.title,
+      cover_image: src.cover_image || r.cover_image,
+      ...(g ? { category: g.toUpperCase() } : {}),
+      ...(src.developer || src.year ? { subtitle: [src.developer, src.year].filter(Boolean).join(" · ") } : {}),
+    });
+    toast.success(full ? "Title, cover, genre, developer and year filled in" : "Title and cover filled in (Steam details unavailable)");
+  };
+
   return (
     <div className="grid gap-2 rounded-lg border p-2">
       <div className="flex items-center gap-2">
@@ -259,19 +289,12 @@ function SteamResult({ r, apply }: { r: GameSearchResult; apply: (p: Partial<Gam
           <p className="truncate text-sm font-medium">{r.title}</p>
           <p className="truncate text-xs text-muted-foreground">
             App {r.id}
-            {genre && ` · ${genre}`}
+            {facts && ` · ${facts}`}
           </p>
+          {d.description && <p className="line-clamp-2 text-xs text-muted-foreground/80">{d.description}</p>}
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            apply({ title: r.title, cover_image: r.cover_image, ...(genre ? { category: genre.toUpperCase() } : {}) });
-            toast.success("Title, cover and genre filled in");
-          }}
-        >
-          Use all
+        <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={useAll}>
+          {busy ? "Loading…" : "Use all"}
         </Button>
       </div>
       <div className="flex gap-2 overflow-x-auto">
@@ -309,7 +332,7 @@ const mediaFields = (kind: "anime" | "manga"): FieldDef<Media>[] => [
     ? { key: "type", label: "Type", type: "select", options: { anime: "Anime" } }
     : { key: "type", label: "Type", type: "select", options: { manga: "Manga", manhwa: "Manhwa" } },
   { key: "cover_image", label: "Cover (portrait)", type: "image" },
-  { key: "rating", label: "Rating", type: "text", maxLength: 40, hint: "e.g. 9.5 / 10" },
+  { key: "rating", label: "Rating", type: "rating" },
   { key: "progress_info", label: "Progress", type: "text", maxLength: 120, hint: kind === "anime" ? "e.g. Seasons 1–4 done" : "e.g. Chapter 271" },
   { key: "rank_badge", label: "Rank tag", type: "text", maxLength: 40 },
   { key: "category_badge", label: "Category tag", type: "text", maxLength: 60 },
@@ -347,7 +370,7 @@ function MediaManager({ kind }: { kind: "anime" | "manga" }) {
                     cover_image: r.coverImage.large,
                     anilist_id: r.id,
                     tags: r.genres.slice(0, 5).join(", "),
-                    rating: r.meanScore ? `${(r.meanScore / 10).toFixed(1)} / 10` : "",
+                    rating: r.meanScore ? `${Math.round(r.meanScore / 5) / 2}/10` : "",
                     type: kind === "anime" ? "anime" : r.format === "MANGA" || !r.format ? "manga" : "manhwa",
                   })
                 }
@@ -464,9 +487,10 @@ const referralFields: FieldDef<Referral>[] = [
   { key: "ref_url", label: "Link", type: "text", hint: "https://… or a path on this site, e.g. /tools" },
   { key: "ref_code", label: "Referral code", type: "text", maxLength: 80, hint: "Referrals only. Visitors can copy it." },
   { key: "image_url", label: "Banner / logo", type: "image" },
-  { key: "display_style", label: "Layout", type: "select", options: { card: "Card (16:9 image)", banner: "Wide banner (6:1)" } },
-  { key: "reward_text", label: "Highlight line", type: "text", maxLength: 300, wide: true, hint: "Green line under the description, e.g. the referral reward or a feature." },
-  { key: "description", label: "Description", type: "textarea", maxLength: 1000 },
+  { key: "size", label: "Tile size", type: "select", options: { small: "Small (icon + title)", medium: "Medium (card)", large: "Large (full row)" } },
+  { key: "display_style", label: "Image shape", type: "select", options: { card: "Card (16:9 image)", banner: "Wide banner (6:1)" } },
+  { key: "reward_text", label: "Highlight line", type: "text", maxLength: 300, wide: true, hint: "The one line shown on the tile, e.g. the referral reward or a feature." },
+  { key: "description", label: "Description", type: "textarea", maxLength: 1000, hint: "Shown in the details popup, together with the link and code." },
   { key: "is_active", label: "Visible", type: "switch" },
 ];
 
@@ -476,7 +500,7 @@ function ReferralsManager() {
       collection="referrals"
       noun="Entry"
       fields={referralFields}
-      defaults={{ kind: "project", title: "", display_style: "card", is_active: true, ref_url: "/" }}
+      defaults={{ kind: "project", title: "", display_style: "card", size: "medium", is_active: true, ref_url: "/" }}
       row={(r) => ({
         title: r.title,
         subtitle: [r.game_name, r.ref_url, r.ref_code].filter(Boolean).join(" · "),

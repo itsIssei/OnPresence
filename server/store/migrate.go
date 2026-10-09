@@ -19,6 +19,9 @@ type migration struct {
 var migrations = []migration{
 	{1, "initial schema", execSQL(schemaV1)},
 	{2, "copy-text links", execSQL(`ALTER TABLE social_links ADD COLUMN copy_text TEXT NOT NULL DEFAULT ''`)},
+	{3, "featured links", execSQL(`ALTER TABLE social_links ADD COLUMN icon_url TEXT NOT NULL DEFAULT '';
+		ALTER TABLE social_links ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0`)},
+	{4, "entry sizes", execSQL(`ALTER TABLE referrals ADD COLUMN size TEXT NOT NULL DEFAULT 'medium'`)},
 }
 
 func execSQL(q string) func(context.Context, *sql.Tx) error {

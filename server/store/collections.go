@@ -87,7 +87,7 @@ func (s *Store) upsert(ctx context.Context, id int64, update string, insert stri
 // ---------------------------------------------------------------- links
 
 func (s *Store) Links(ctx context.Context, activeOnly bool) ([]models.SocialLink, error) {
-	q := `SELECT id, platform, label, url, copy_text, icon, sort_order, is_active, clicks FROM social_links`
+	q := `SELECT id, platform, label, url, copy_text, icon, icon_url, is_featured, sort_order, is_active, clicks FROM social_links`
 	if activeOnly {
 		q += ` WHERE is_active = 1`
 	}
@@ -99,7 +99,7 @@ func (s *Store) Links(ctx context.Context, activeOnly bool) ([]models.SocialLink
 	out := []models.SocialLink{}
 	for rows.Next() {
 		var x models.SocialLink
-		if err := rows.Scan(&x.ID, &x.Platform, &x.Label, &x.URL, &x.CopyText, &x.Icon, &x.SortOrder, &x.IsActive, &x.Clicks); err != nil {
+		if err := rows.Scan(&x.ID, &x.Platform, &x.Label, &x.URL, &x.CopyText, &x.Icon, &x.IconURL, &x.IsFeatured, &x.SortOrder, &x.IsActive, &x.Clicks); err != nil {
 			return nil, err
 		}
 		out = append(out, x)
@@ -109,11 +109,21 @@ func (s *Store) Links(ctx context.Context, activeOnly bool) ([]models.SocialLink
 
 func (s *Store) SaveLink(ctx context.Context, x *models.SocialLink) error {
 	id, err := s.upsert(ctx, x.ID,
-		`UPDATE social_links SET platform=?, label=?, url=?, copy_text=?, icon=?, sort_order=?, is_active=? WHERE id=?`,
-		`INSERT INTO social_links (platform, label, url, copy_text, icon, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		x.Platform, x.Label, x.URL, x.CopyText, x.Icon, x.SortOrder, b2i(x.IsActive))
+		`UPDATE social_links SET platform=?, label=?, url=?, copy_text=?, icon=?, icon_url=?, is_featured=?, sort_order=?, is_active=? WHERE id=?`,
+		`INSERT INTO social_links (platform, label, url, copy_text, icon, icon_url, is_featured, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		x.Platform, x.Label, x.URL, x.CopyText, x.Icon, x.IconURL, b2i(x.IsFeatured), x.SortOrder, b2i(x.IsActive))
 	x.ID = id
 	return err
+}
+
+// MaxFeaturedLinks is how many links can be shown as labeled boxes.
+const MaxFeaturedLinks = 2
+
+// FeaturedLinks counts featured links other than exceptID.
+func (s *Store) FeaturedLinks(ctx context.Context, exceptID int64) (int, error) {
+	var n int
+	err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM social_links WHERE is_featured = 1 AND id != ?`, exceptID).Scan(&n)
+	return n, err
 }
 
 // LinkClick increments the counter of an active link. It returns the target
@@ -222,7 +232,7 @@ func (s *Store) SaveMedia(ctx context.Context, x *models.Media) error {
 // ---------------------------------------------------------------- referrals
 
 func (s *Store) Referrals(ctx context.Context, activeOnly bool) ([]models.Referral, error) {
-	q := `SELECT id, kind, title, game_name, ref_code, ref_url, image_url, description, reward_text, badge, display_style, sort_order, is_active, created_at FROM referrals`
+	q := `SELECT id, kind, title, game_name, ref_code, ref_url, image_url, description, reward_text, badge, display_style, size, sort_order, is_active, created_at FROM referrals`
 	if activeOnly {
 		q += ` WHERE is_active = 1`
 	}
@@ -234,7 +244,7 @@ func (s *Store) Referrals(ctx context.Context, activeOnly bool) ([]models.Referr
 	out := []models.Referral{}
 	for rows.Next() {
 		var x models.Referral
-		if err := rows.Scan(&x.ID, &x.Kind, &x.Title, &x.GameName, &x.RefCode, &x.RefURL, &x.ImageURL, &x.Description, &x.RewardText, &x.Badge, &x.DisplayStyle, &x.SortOrder, &x.IsActive, &x.CreatedAt); err != nil {
+		if err := rows.Scan(&x.ID, &x.Kind, &x.Title, &x.GameName, &x.RefCode, &x.RefURL, &x.ImageURL, &x.Description, &x.RewardText, &x.Badge, &x.DisplayStyle, &x.Size, &x.SortOrder, &x.IsActive, &x.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, x)
@@ -247,9 +257,9 @@ func (s *Store) SaveReferral(ctx context.Context, x *models.Referral) error {
 		x.CreatedAt = now()
 	}
 	id, err := s.upsert(ctx, x.ID,
-		`UPDATE referrals SET kind=?, title=?, game_name=?, ref_code=?, ref_url=?, image_url=?, description=?, reward_text=?, badge=?, display_style=?, sort_order=?, is_active=? WHERE id=?`,
-		`INSERT INTO referrals (kind, title, game_name, ref_code, ref_url, image_url, description, reward_text, badge, display_style, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
-		x.Kind, x.Title, x.GameName, x.RefCode, x.RefURL, x.ImageURL, x.Description, x.RewardText, x.Badge, x.DisplayStyle, x.SortOrder, b2i(x.IsActive))
+		`UPDATE referrals SET kind=?, title=?, game_name=?, ref_code=?, ref_url=?, image_url=?, description=?, reward_text=?, badge=?, display_style=?, size=?, sort_order=?, is_active=? WHERE id=?`,
+		`INSERT INTO referrals (kind, title, game_name, ref_code, ref_url, image_url, description, reward_text, badge, display_style, size, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
+		x.Kind, x.Title, x.GameName, x.RefCode, x.RefURL, x.ImageURL, x.Description, x.RewardText, x.Badge, x.DisplayStyle, x.Size, x.SortOrder, b2i(x.IsActive))
 	x.ID = id
 	return err
 }

@@ -120,6 +120,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/admin/import/anilist", a(s.importAniList))
 	mux.HandleFunc("GET /api/v1/admin/import/games", a(s.importGames))
 	mux.HandleFunc("GET /api/v1/admin/import/music", a(s.importMusic))
+	mux.HandleFunc("POST /api/v1/admin/import/favicon", a(s.importFavicon))
 
 	// Admin: decoration packs, export/restore, backups
 	mux.HandleFunc("POST /api/v1/admin/catalog", a(s.syncCatalog))

@@ -65,6 +65,9 @@ export function ProfileCard({ profile: p, presence, audio, onOpenVault, trackLin
   const status = s.show_presence ? presence?.status ?? null : null;
   const custom = s.show_presence ? customStatus(presence?.discord ?? null) : "";
   const showVault = s.vault_enabled && onOpenVault;
+  // Up to two featured links get a labeled box; the rest stay icons.
+  const featured = p.links.filter((l) => l.is_featured).slice(0, 2);
+  const others = p.links.filter((l) => !featured.includes(l));
 
   return (
     <article
@@ -144,9 +147,17 @@ export function ProfileCard({ profile: p, presence, audio, onOpenVault, trackLin
             </div>
           )}
 
-          {p.links.length > 0 && (
-            <nav aria-label="Links" className="mt-5 flex flex-wrap justify-center gap-1">
-              {p.links.map((l) => (
+          {featured.length > 0 && (
+            <div className={cn("mt-5 grid w-full gap-2", featured.length > 1 && "grid-cols-2")} aria-label="Featured links">
+              {featured.map((l) => (
+                <CardLink key={l.id} link={l} track={trackLinks} copiedLabel={t.copied} variant="box" />
+              ))}
+            </div>
+          )}
+
+          {others.length > 0 && (
+            <nav aria-label="Links" className={cn("flex flex-wrap justify-center gap-1", featured.length > 0 ? "mt-3" : "mt-5")}>
+              {others.map((l) => (
                 <CardLink key={l.id} link={l} track={trackLinks} copiedLabel={t.copied} />
               ))}
             </nav>
@@ -201,19 +212,34 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** One icon in the link row: opens the URL, or copies text (e.g. a username). */
-function CardLink({ link: l, track, copiedLabel }: { link: PublicProfile["links"][number]; track: boolean; copiedLabel: string }) {
+const BOX_CLASS =
+  "flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-left text-sm font-medium text-white/85 transition hover:border-[color-mix(in_oklch,var(--brand)_45%,transparent)] hover:bg-white/[0.07] hover:text-white";
+
+/**
+ * One link: an icon in the row, or (variant "box") a small labeled box for
+ * featured links. A click opens the URL, or copies text such as a username.
+ */
+function CardLink({ link: l, track, copiedLabel, variant = "icon" }: { link: PublicProfile["links"][number]; track: boolean; copiedLabel: string; variant?: "icon" | "box" }) {
   const [copied, setCopied] = useState(false);
-  const glyph = <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} className="size-[22px]" />;
+  const box = variant === "box";
+  const glyph = <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} image={l.icon_url} className={box ? "size-5 flex-none" : "size-[22px]"} />;
+  const inner = box ? (
+    <>
+      {glyph}
+      <span className="truncate">{copied ? copiedLabel : l.label}</span>
+    </>
+  ) : (
+    glyph
+  );
+  const cls = box ? BOX_CLASS : LINK_CLASS;
 
   if (!l.copy_text) {
-    return (
-      <Tip label={l.label}>
-        <a href={track ? `/go/${l.id}` : l.url} target="_blank" rel="noopener noreferrer" aria-label={l.label} className={LINK_CLASS}>
-          {glyph}
-        </a>
-      </Tip>
+    const a = (
+      <a href={track ? `/go/${l.id}` : l.url} target="_blank" rel="noopener noreferrer" aria-label={l.label} className={cls}>
+        {inner}
+      </a>
     );
+    return box ? a : <Tip label={l.label}>{a}</Tip>;
   }
 
   const copy = async () => {
@@ -223,9 +249,9 @@ function CardLink({ link: l, track, copiedLabel }: { link: PublicProfile["links"
     if (track) fetch(`/go/${l.id}`).catch(() => {});
   };
   return (
-    <Tip label={copied ? copiedLabel : `${l.label}: ${l.copy_text}`} show={copied}>
-      <button type="button" onClick={copy} aria-label={`${l.label}: copy ${l.copy_text}`} className={`${LINK_CLASS} cursor-copy`}>
-        {glyph}
+    <Tip label={copied ? copiedLabel : box ? l.copy_text : `${l.label}: ${l.copy_text}`} show={copied && !box} className={box ? "w-full min-w-0" : undefined}>
+      <button type="button" onClick={copy} aria-label={`${l.label}: copy ${l.copy_text}`} className={`${cls} cursor-copy`}>
+        {inner}
       </button>
     </Tip>
   );

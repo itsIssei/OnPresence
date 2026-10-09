@@ -60,7 +60,7 @@ export function OverviewPage() {
         <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
           {top.map((l) => (
             <li key={l.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-accent/40">
-              <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} className="size-4 text-muted-foreground" />
+              <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} image={l.icon_url} className="size-4 text-muted-foreground" />
               <span className="flex-1 truncate">{l.label}</span>
               <span className="tabular-nums text-muted-foreground">{l.clicks}</span>
             </li>

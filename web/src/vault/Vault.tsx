@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Check, Clock, Copy, ExternalLink, Pause, Play, Search, Star } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Clock, Copy, ExternalLink, Pause, Play, Search, Star } from "lucide-react";
 import { siSpotify, siYoutubemusic } from "simple-icons";
 import { BrandIcon } from "@/lib/icons";
 import { strings, type Strings } from "@/lib/i18n";
@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Detail = { kind: "game"; item: Game } | { kind: "media"; item: Media } | { kind: "playlist"; item: Playlist };
+type Detail = { kind: "game"; item: Game } | { kind: "media"; item: Media } | { kind: "playlist"; item: Playlist } | { kind: "entry"; item: Referral };
 
 export function Vault({ profile, vault, audio, onClose }: Props) {
   const s = profile.settings;
@@ -112,7 +112,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
                 <span className="size-2 rounded-full bg-brand shadow-[0_0_10px_var(--brand)]" />
                 {labels[id]}
               </h3>
-              {id === "referrals" && <Referrals items={data.referrals} t={t} />}
+              {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => setDetail({ kind: "entry", item })} />}
               {id === "games" && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {data.games.map((g) => (
@@ -272,32 +272,26 @@ function MusicLinks({ p }: { p: Playlist }) {
   );
 }
 
-function Referrals({ items, t }: { items: Referral[]; t: Strings }) {
+function Referrals({ items, t, onOpen }: { items: Referral[]; t: Strings; onOpen: (r: Referral) => void }) {
   const projects = items.filter((r) => r.kind === "project");
   const referrals = items.filter((r) => r.kind !== "project");
   const both = projects.length > 0 && referrals.length > 0;
+  const group = (title: string, list: Referral[]) =>
+    list.length > 0 && (
+      <div className="grid gap-3">
+        {both && <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">{title}</h4>}
+        {/* 6 columns on desktop: small and medium = 2 (a third), large = 6 (full row). */}
+        <div className="grid grid-flow-row-dense grid-cols-2 items-start gap-3 lg:grid-cols-6">
+          {list.map((r) => (
+            <EntryCard key={r.id} r={r} t={t} onOpen={() => onOpen(r)} />
+          ))}
+        </div>
+      </div>
+    );
   return (
     <div className="grid gap-6">
-      {projects.length > 0 && (
-        <div className="grid gap-3">
-          {both && <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">{t.projects}</h4>}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((r) => (
-              <ProjectCard key={r.id} r={r} t={t} />
-            ))}
-          </div>
-        </div>
-      )}
-      {referrals.length > 0 && (
-        <div className="grid gap-3">
-          {both && <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">{t.invites}</h4>}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {referrals.map((r) => (
-              <ReferralCard key={r.id} r={r} t={t} />
-            ))}
-          </div>
-        </div>
-      )}
+      {group(t.projects, projects)}
+      {group(t.invites, referrals)}
     </div>
   );
 }
@@ -312,44 +306,68 @@ function linkLabel(url: string): string {
   }
 }
 
-function ProjectCard({ r, t }: { r: Referral; t: Strings }) {
-  const internal = r.ref_url.startsWith("/");
-  const body = (
-    <>
-      <div className={cn("relative overflow-hidden bg-black/40", r.display_style === "banner" ? "aspect-[6/1]" : "aspect-video")}>
-        <Cover src={r.image_url} alt={r.title} />
-        {r.badge && (
-          <span className="absolute left-2 top-2 rounded-md bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-[0_0_16px_-2px_var(--brand)]">
-            {r.badge}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-4">
-        {r.game_name && <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/45">{r.game_name}</p>}
-        <p className="font-semibold text-white">{r.title}</p>
-        {r.description && <p className="line-clamp-3 text-sm text-white/60">{r.description}</p>}
-        {r.reward_text && <p className="text-xs font-medium text-[color-mix(in_oklch,var(--brand)_70%,white)]">{r.reward_text}</p>}
-        {r.ref_url && (
-          <span className="mt-auto flex items-center gap-1.5 pt-2 font-mono text-xs text-white/55 transition group-hover:text-white">
-            {linkLabel(r.ref_url)}
-            <ExternalLink className="size-3.5" />
-          </span>
-        )}
-      </div>
-    </>
+const ENTRY_SPAN = { small: "col-span-1 lg:col-span-2", medium: "col-span-2 sm:col-span-1 lg:col-span-2", large: "col-span-2 lg:col-span-6" } as const;
+
+/**
+ * A project or referral tile. It shows only the essentials (image, tag,
+ * category, title, one highlight line); everything else is in the details
+ * popup, which opens on click.
+ */
+function EntryCard({ r, t, onOpen }: { r: Referral; t: Strings; onOpen: () => void }) {
+  const size = r.size in ENTRY_SPAN ? r.size : "medium";
+  const referral = r.kind !== "project";
+  const badge = r.badge && (
+    <span
+      className={cn(
+        "rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+        referral ? "bg-emerald-500/90 text-black" : "bg-brand text-white shadow-[0_0_16px_-2px_var(--brand)]",
+      )}
+    >
+      {r.badge}
+    </span>
   );
-  const cls = "group flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] text-left transition hover:-translate-y-0.5 hover:border-[color-mix(in_oklch,var(--brand)_45%,transparent)]";
-  return r.ref_url ? (
-    <a href={r.ref_url} target={internal ? undefined : "_blank"} rel={internal ? undefined : "noopener noreferrer"} className={cls} aria-label={`${t.open} ${r.title}`}>
-      {body}
-    </a>
-  ) : (
-    <div className={cls}>{body}</div>
+  const base =
+    "group overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] text-left transition hover:-translate-y-0.5 hover:border-[color-mix(in_oklch,var(--brand)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-[var(--brand)]";
+
+  if (size === "small") {
+    return (
+      <button type="button" onClick={onOpen} className={cn(base, ENTRY_SPAN.small, "flex items-center gap-3 p-2.5")} aria-label={`${r.title}: ${t.details}`}>
+        <div className="size-12 flex-none overflow-hidden rounded-xl bg-black/40">
+          <Cover src={r.image_url} alt="" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">{r.title}</p>
+          <p className="truncate text-[11px] uppercase tracking-[0.1em] text-white/45">{r.badge || r.game_name}</p>
+        </div>
+      </button>
+    );
+  }
+  return (
+    <button type="button" onClick={onOpen} className={cn(base, ENTRY_SPAN[size], "flex flex-col")} aria-label={`${r.title}: ${t.details}`}>
+      <div className={cn("relative w-full overflow-hidden bg-black/40", r.display_style === "banner" ? "aspect-[6/1]" : size === "large" ? "aspect-[4/1]" : "aspect-video")}>
+        <Cover src={r.image_url} alt={r.title} />
+        {badge && <span className="absolute left-2 top-2">{badge}</span>}
+      </div>
+      <div className="flex w-full items-center gap-3 p-3.5">
+        <div className="min-w-0 flex-1">
+          {r.game_name && <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-white/45">{r.game_name}</p>}
+          <p className="truncate font-semibold text-white">{r.title}</p>
+          {r.reward_text && <p className={cn("truncate text-xs font-medium", referral ? "text-emerald-400" : "text-[color-mix(in_oklch,var(--brand)_70%,white)]")}>{r.reward_text}</p>}
+        </div>
+        <span className="flex flex-none items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-white/70 transition group-hover:border-white/25 group-hover:text-white">
+          {t.details}
+          <ChevronRight className="size-3.5" />
+        </span>
+      </div>
+    </button>
   );
 }
 
-function ReferralCard({ r, t }: { r: Referral; t: Strings }) {
+/** Everything about a project or referral: description, link, code to copy. */
+function EntryDetail({ r, t }: { r: Referral; t: Strings }) {
   const [copied, setCopied] = useState(false);
+  const referral = r.kind !== "project";
+  const internal = r.ref_url.startsWith("/");
   const copy = () => {
     navigator.clipboard?.writeText(r.ref_code).then(() => {
       setCopied(true);
@@ -357,47 +375,61 @@ function ReferralCard({ r, t }: { r: Referral; t: Strings }) {
     });
   };
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03]">
+    <>
       {r.image_url && (
-        <div className={cn("relative overflow-hidden bg-black/40", r.display_style === "banner" ? "aspect-[6/1]" : "aspect-video")}>
-          <Cover src={r.image_url} alt={r.game_name || r.title} />
-          {r.badge && <span className="absolute left-2 top-2 rounded-md bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold uppercase text-black">{r.badge}</span>}
+        <div className={cn("relative bg-black/40", r.display_style === "banner" ? "aspect-[6/1]" : "aspect-video")}>
+          <Cover src={r.image_url} alt={r.title} />
         </div>
       )}
-      <div className="flex flex-col gap-2 p-4">
-        <p className="font-semibold text-white">{r.title}</p>
-        {r.description && <p className="text-sm text-white/60">{r.description}</p>}
-        {r.reward_text && <p className="text-xs font-medium text-emerald-400">{r.reward_text}</p>}
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          {r.ref_code && (
-            <button
-              type="button"
-              onClick={copy}
-              className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-xs text-white transition hover:bg-white/10"
-              aria-label={t.copyCode}
-            >
-              {r.ref_code}
-              {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5 opacity-60" />}
-            </button>
-          )}
-          {r.ref_url && (
-            <a
-              href={r.ref_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-black transition hover:brightness-110"
-            >
-              {t.join}
-              <ExternalLink className="size-3.5" />
-            </a>
-          )}
+      <div className="space-y-3 p-5">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {r.game_name && <Chip>{r.game_name}</Chip>}
+          {r.badge && <Chip>{r.badge}</Chip>}
         </div>
+        <DialogTitle className="font-display text-xl">{r.title}</DialogTitle>
+        {r.reward_text ? (
+          <DialogDescription className={cn("text-sm font-medium", referral ? "text-emerald-400" : "text-[color-mix(in_oklch,var(--brand)_70%,white)]")}>{r.reward_text}</DialogDescription>
+        ) : (
+          <DialogDescription className="sr-only">{r.game_name || r.title}</DialogDescription>
+        )}
+        {r.description && <p className="whitespace-pre-line text-sm leading-relaxed text-white/80">{r.description}</p>}
+        {(r.ref_code || r.ref_url) && (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {r.ref_code && (
+              <button
+                type="button"
+                onClick={copy}
+                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-white transition hover:bg-white/10"
+                aria-label={t.copyCode}
+              >
+                {r.ref_code}
+                {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5 opacity-60" />}
+              </button>
+            )}
+            {r.ref_url && (
+              <a
+                href={r.ref_url}
+                target={internal ? undefined : "_blank"}
+                rel={internal ? undefined : "noopener noreferrer"}
+                className={cn(
+                  "ml-auto flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition hover:brightness-110",
+                  referral ? "bg-emerald-500 text-black" : "bg-brand text-white",
+                )}
+              >
+                {referral ? t.join : t.open}
+                <span className="font-mono text-xs font-normal opacity-80">{linkLabel(r.ref_url)}</span>
+                <ExternalLink className="size-3.5" />
+              </a>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </>
   );
 }
 
 function DetailView({ d, t, audio }: { d: Detail; t: Strings; audio: AudioController | null }) {
+  if (d.kind === "entry") return <EntryDetail r={d.item} t={t} />;
   if (d.kind === "game") {
     const g = d.item;
     return (

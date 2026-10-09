@@ -187,8 +187,10 @@ def content(avatar_url, banner_url, g, m, p, r):
         {"platform": "bluesky", "label": "Bluesky", "url": "https://bsky.app", "icon": "bluesky"},
         {"platform": "kofi", "label": "Ko-fi", "url": "https://ko-fi.com", "icon": "kofi"},
     ]
+    links.insert(1, {"platform": "discord", "label": "Discord", "url": "", "icon": "discord", "copy_text": "@nova.pixels"})
     for i, l in enumerate(links):
-        l.update(sort_order=i, is_active=True, clicks=0)
+        l.setdefault("copy_text", "")
+        l.update(sort_order=i, is_active=True, clicks=0, icon_url="", is_featured=i < 2)
     badges = [
         {"title": "Pixel artist", "subtitle": "10 years of tiny art", "icon": "sparkles", "color": "#c4b5fd"},
         {"title": "Speedrunner", "subtitle": "Any% world record holder (for a week)", "icon": "trophy", "color": "#fbbf24"},
@@ -216,9 +218,9 @@ def content(avatar_url, banner_url, g, m, p, r):
         {"title": "Rainy Lo-fi", "subtitle": "Drawing background noise", "type": "playlist", "cover_image": p["lofi"], "spotify_url": "", "yt_music_url": "", "audio_url": "", "duration": "48m", "artist": "Various artists", "is_featured": False, "tracks": []},
     ]
     referrals = [
-        {"kind": "project", "title": "Pixel Palette", "game_name": "Web tool", "ref_code": "", "ref_url": "https://github.com", "image_url": r["palette"], "description": "Generate retro color palettes from any image.", "reward_text": "", "badge": "New", "display_style": "banner", "is_active": True},
-        {"kind": "project", "title": "Lobby Bot", "game_name": "Chat bot", "ref_code": "", "ref_url": "https://github.com", "image_url": r["bot"], "description": "Speedrun race lobbies with split tracking.", "reward_text": "", "badge": "", "display_style": "card", "is_active": True},
-        {"kind": "referral", "title": "Cloudlet Hosting", "game_name": "Hosting", "ref_code": "NOVA20", "ref_url": "https://example.com", "image_url": r["host"], "description": "Where this card is hosted.", "reward_text": "20% off your first month", "badge": "", "display_style": "card", "is_active": True},
+        {"kind": "project", "size": "large", "title": "Pixel Palette", "game_name": "Web tool", "ref_code": "", "ref_url": "https://github.com", "image_url": r["palette"], "description": "Generate retro color palettes from any image.", "reward_text": "", "badge": "New", "display_style": "banner", "is_active": True},
+        {"kind": "project", "size": "medium", "title": "Lobby Bot", "game_name": "Chat bot", "ref_code": "", "ref_url": "https://github.com", "image_url": r["bot"], "description": "Speedrun race lobbies with split tracking.", "reward_text": "", "badge": "", "display_style": "card", "is_active": True},
+        {"kind": "referral", "size": "small", "title": "Cloudlet Hosting", "game_name": "Hosting", "ref_code": "NOVA20", "ref_url": "https://example.com", "image_url": r["host"], "description": "Where this card is hosted.", "reward_text": "20% off your first month", "badge": "", "display_style": "card", "is_active": True},
     ]
     for coll in (games, media, playlists, referrals):
         for i, x in enumerate(coll):

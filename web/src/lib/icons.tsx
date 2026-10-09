@@ -122,7 +122,8 @@ export function BrandIcon({ icon, className, title }: { icon: SimpleIcon; classN
   );
 }
 
-export function LinkGlyph({ icon, platform, url, className }: { icon: string; platform: string; url: string; className?: string }) {
+export function LinkGlyph({ icon, platform, url, image, className }: { icon: string; platform: string; url: string; image?: string; className?: string }) {
+  if (image) return <img src={image} alt="" aria-hidden className={cn("size-5 rounded-[22%] object-contain", className)} decoding="async" />;
   const brand = brandFor(icon, platform, url);
   if (brand) return <BrandIcon icon={brand} className={className} />;
   const Fallback = url.startsWith("mailto:") ? Mail : url ? Globe : LinkIcon;

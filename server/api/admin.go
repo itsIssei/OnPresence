@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"onpresence/server/models"
+	"onpresence/server/store"
 )
 
 var (
@@ -215,6 +216,16 @@ func (s *Server) saveCollection(c string, update bool) http.HandlerFunc {
 			}
 			x.ID = id
 			validateLink(v, x)
+			if x.IsFeatured {
+				n, err := s.store.FeaturedLinks(r.Context(), id)
+				if err != nil {
+					serverError(w, r, err)
+					return
+				}
+				if n >= store.MaxFeaturedLinks {
+					v.add("is_featured", "Only 2 links can be featured. Unfeature another one first.")
+				}
+			}
 			item, save = x, func(ctx context.Context) error { return s.store.SaveLink(ctx, x) }
 		case "badges":
 			x := &models.Badge{}
@@ -331,6 +342,8 @@ func validateLink(v validationError, x *models.SocialLink) {
 	text(v, "label", &x.Label, 1, 60)
 	text(v, "platform", &x.Platform, 0, 30)
 	text(v, "icon", &x.Icon, 0, 60)
+	x.IconURL = strings.TrimSpace(x.IconURL)
+	safeURL(v, "icon_url", x.IconURL)
 	x.URL = strings.TrimSpace(x.URL)
 	text(v, "copy_text", &x.CopyText, 0, 100)
 	if x.CopyText != "" {
@@ -425,4 +438,5 @@ func validateReferral(v validationError, x *models.Referral) {
 	}
 	x.DisplayStyle = models.OneOf(x.DisplayStyle, models.ReferralStyles, "banner")
 	x.Kind = models.OneOf(x.Kind, models.ReferralKinds, "referral")
+	x.Size = models.OneOf(x.Size, models.ReferralSizes, "medium")
 }

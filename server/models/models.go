@@ -178,15 +178,17 @@ type AdminProfile struct {
 }
 
 type SocialLink struct {
-	ID        int64  `json:"id"`
-	Platform  string `json:"platform"`
-	Label     string `json:"label"`
-	URL       string `json:"url"`
-	CopyText  string `json:"copy_text"` // when set, a click copies this text instead of opening URL
-	Icon      string `json:"icon"`
-	SortOrder int    `json:"sort_order"`
-	IsActive  bool   `json:"is_active"`
-	Clicks    int64  `json:"clicks"`
+	ID         int64  `json:"id"`
+	Platform   string `json:"platform"`
+	Label      string `json:"label"`
+	URL        string `json:"url"`
+	CopyText   string `json:"copy_text"` // when set, a click copies this text instead of opening URL
+	Icon       string `json:"icon"`
+	IconURL    string `json:"icon_url"`    // custom icon image (upload or https); wins over Icon
+	IsFeatured bool   `json:"is_featured"` // shown as a labeled box above the icon row (max 2)
+	SortOrder  int    `json:"sort_order"`
+	IsActive   bool   `json:"is_active"`
+	Clicks     int64  `json:"clicks"`
 }
 
 type Badge struct {
@@ -279,6 +281,7 @@ type Referral struct {
 	RewardText   string `json:"reward_text"`
 	Badge        string `json:"badge"`
 	DisplayStyle string `json:"display_style"` // banner | card
+	Size         string `json:"size"`          // small | medium | large (tile size in the display case)
 	SortOrder    int    `json:"sort_order"`
 	IsActive     bool   `json:"is_active"`
 	CreatedAt    string `json:"created_at"`
@@ -287,6 +290,7 @@ type Referral struct {
 var (
 	ReferralStyles = []string{"banner", "card"}
 	ReferralKinds  = []string{"project", "referral"}
+	ReferralSizes  = []string{"small", "medium", "large"}
 )
 
 // Upload is a file in the media library (data/uploads).

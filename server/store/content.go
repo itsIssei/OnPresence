@@ -77,8 +77,8 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 			return res.LastInsertId()
 		}
 		for _, x := range e.Links {
-			if _, err := ins(`INSERT INTO social_links (id, platform, label, url, copy_text, icon, sort_order, is_active, clicks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				x.ID, x.Platform, x.Label, x.URL, x.CopyText, x.Icon, x.SortOrder, b2i(x.IsActive), x.Clicks); err != nil {
+			if _, err := ins(`INSERT INTO social_links (id, platform, label, url, copy_text, icon, icon_url, is_featured, sort_order, is_active, clicks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Platform, x.Label, x.URL, x.CopyText, x.Icon, x.IconURL, b2i(x.IsFeatured), x.SortOrder, b2i(x.IsActive), x.Clicks); err != nil {
 				return err
 			}
 		}
@@ -101,8 +101,8 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 			}
 		}
 		for _, x := range e.Referrals {
-			if _, err := ins(`INSERT INTO referrals (id, kind, title, game_name, ref_code, ref_url, image_url, description, reward_text, badge, display_style, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				x.ID, x.Kind, x.Title, x.GameName, x.RefCode, x.RefURL, x.ImageURL, x.Description, x.RewardText, x.Badge, x.DisplayStyle, x.SortOrder, b2i(x.IsActive), orNow(x.CreatedAt)); err != nil {
+			if _, err := ins(`INSERT INTO referrals (id, kind, title, game_name, ref_code, ref_url, image_url, description, reward_text, badge, display_style, size, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Kind, x.Title, x.GameName, x.RefCode, x.RefURL, x.ImageURL, x.Description, x.RewardText, x.Badge, x.DisplayStyle, x.Size, x.SortOrder, b2i(x.IsActive), orNow(x.CreatedAt)); err != nil {
 				return err
 			}
 		}

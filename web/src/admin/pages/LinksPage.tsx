@@ -1,11 +1,16 @@
-import { MousePointerClick } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Globe, Loader2, MousePointerClick, Star } from "lucide-react";
+import { toast } from "sonner";
 import { Badge as UIBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { api, ApiError } from "@/lib/api";
 import { BADGE_ICONS, BadgeGlyph, BRAND_OPTIONS, LinkGlyph } from "@/lib/icons";
 import type { Badge, SocialLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CollectionManager, type FieldDef } from "../Collection";
-import { Field, PageHeader } from "../kit";
+import { Field, MediaInput, PageHeader } from "../kit";
 
 const linkFields: FieldDef<SocialLink>[] = [
   { key: "label", label: "Label", type: "text", maxLength: 60, hint: "Shown as tooltip and for screen readers." },
@@ -76,8 +81,57 @@ const linkFields: FieldDef<SocialLink>[] = [
       </Field>
     ),
   },
+  {
+    key: "icon_url",
+    label: "Custom icon",
+    type: "custom",
+    render: (v, set, errors) => <CustomIconField value={v.icon_url ?? ""} url={v.url ?? ""} error={errors.icon_url} onChange={(icon_url) => set({ icon_url })} />,
+  },
+  {
+    key: "is_featured",
+    label: "Featured",
+    type: "custom",
+    render: (v, set, errors) => (
+      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3">
+        <span>
+          <span className="block text-sm font-medium">Featured</span>
+          <span className={cn("block text-xs", errors.is_featured ? "text-destructive" : "text-muted-foreground")}>
+            {errors.is_featured ?? "Shown as a small box with icon and label, above the other links. Up to 2."}
+          </span>
+        </span>
+        <Switch checked={!!v.is_featured} onCheckedChange={(is_featured) => set({ is_featured })} />
+      </label>
+    ),
+  },
   { key: "is_active", label: "Visible on card", type: "switch" },
 ];
+
+/** Optional icon image: upload/pick one, or fetch the site's own icon once. */
+function CustomIconField({ value, url, error, onChange }: { value: string; url: string; error?: string; onChange: (v: string) => void }) {
+  const qc = useQueryClient();
+  const fetchIcon = useMutation({
+    mutationFn: () => api.importFavicon(url),
+    onSuccess: (up) => {
+      onChange(up.url);
+      qc.invalidateQueries({ queryKey: ["admin", "uploads"] });
+      toast.success("Site icon saved to your media library");
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not fetch the icon"),
+  });
+  return (
+    <Field label="Custom icon" hint="Optional. Replaces the icon above. The site icon is downloaded once and stored here; visitors never load it from the other site." error={error}>
+      {(id) => (
+        <div className="grid gap-2">
+          <MediaInput id={id} value={value} onChange={onChange} />
+          <Button type="button" variant="secondary" size="sm" className="justify-self-start" disabled={!url.startsWith("https://") || url.length < 12 || fetchIcon.isPending} onClick={() => fetchIcon.mutate()}>
+            {fetchIcon.isPending ? <Loader2 className="size-4 animate-spin" /> : <Globe className="size-4" />}
+            Use the site&apos;s own icon
+          </Button>
+        </div>
+      )}
+    </Field>
+  );
+}
 
 export function LinksPage() {
   return (
@@ -87,14 +141,15 @@ export function LinksPage() {
         collection="links"
         noun="Link"
         fields={linkFields}
-        defaults={{ label: "", url: "https://", copy_text: "", icon: "", platform: "", is_active: true }}
+        defaults={{ label: "", url: "https://", copy_text: "", icon: "", icon_url: "", platform: "", is_featured: false, is_active: true }}
         row={(l) => ({
           title: l.label,
           subtitle: l.copy_text ? `Copies “${l.copy_text}”` : l.url,
           muted: !l.is_active,
           meta: (
             <>
-              <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} className="size-4 text-muted-foreground" />
+              {l.is_featured && <Star className="size-4 fill-amber-400 text-amber-400" aria-label="Featured" />}
+              <LinkGlyph icon={l.icon} platform={l.platform} url={l.url} image={l.icon_url} className="size-4 text-muted-foreground" />
               <UIBadge variant="secondary" className="gap-1 tabular-nums">
                 <MousePointerClick className="size-3" />
                 {l.clicks}

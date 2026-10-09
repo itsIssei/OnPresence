@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, type CollectionName, type CollectionTypes } from "@/lib/api";
@@ -24,6 +25,7 @@ export type FieldDef<T> = {
   wide?: boolean;
 } & (
   | { type: "text" | "textarea" | "number" | "switch" | "image" | "audio" | "color"; maxLength?: number }
+  | { type: "rating" }
   | { type: "select"; options: Record<string, string> }
   | { type: "custom"; render: (value: T, set: (patch: Partial<T>) => void, errors: Record<string, string>) => React.ReactNode }
 );
@@ -263,6 +265,15 @@ function FieldInput<T>({ def, form, set, error, errors }: { def: FieldDef<T>; fo
     );
   }
   if (def.type === "custom") return <div className={cls}>{def.render(form, set, errors)}</div>;
+  if (def.type === "rating") {
+    // Stored as text like "8.5/10" (empty = not rated); older free-text values keep their number.
+    const n = Math.min(10, Math.max(0, Math.round((parseFloat(String(v ?? "").replace(",", ".")) || 0) * 2) / 2));
+    return (
+      <Field label={`${def.label} · ${n ? `${n}/10` : "not rated"}`} hint={def.hint ?? "Steps of 0.5. Slide to 0 for no rating."} error={error} className={cls}>
+        {() => <Slider min={0} max={10} step={0.5} value={[n]} onValueChange={([x]) => put(x ? `${x}/10` : "")} />}
+      </Field>
+    );
+  }
 
   return (
     <Field label={def.label} hint={def.hint} error={error} className={cls}>

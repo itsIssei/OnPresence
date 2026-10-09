@@ -28,6 +28,7 @@ export const strings = {
   review: "Review",
   noResults: "No results.",
   playing: "Now playing",
+  details: "Details",
 };
 
 export type Strings = typeof strings;
