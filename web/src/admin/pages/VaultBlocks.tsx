@@ -16,7 +16,7 @@ import { Choice } from "./AppearancePage";
 const SECTION_LABEL: Record<FixedSectionId, string> = { referrals: "Projects & referrals", games: "Games", anime: "Anime", manga: "Manga & manhwa", music: "Music" };
 const TYPE_LABEL: Record<BlockType, string> = { section: "Section", text: "Text", stats: "Stats", featured: "Featured", recent: "Recent" };
 const DEFAULT_TITLE: Partial<Record<BlockType, string>> = { stats: "(none)", featured: "Featured", recent: "Recently added" };
-const LAYOUT_LABEL: Record<string, string> = { auto: "The case's own layout", grid: "Grid", wide: "Wide cards", list: "List" };
+const LAYOUT_LABEL: Record<string, string> = { auto: "The case's own layout", grid: "Grid", wide: "Wide cards", list: "List", tier: "Tier list (S, A, B, C by badge)" };
 const DENSITY_LABEL: Record<BlockDensity, string> = { compact: "Compact (more per row)", normal: "Normal", large: "Large (fewer per row)" };
 
 /**
@@ -154,7 +154,7 @@ function BlockRow({
               {(fid) => <Choice<string> id={fid} value={b.layout || "auto"} options={layoutOptions} onChange={(v) => onChange({ layout: (v === "auto" ? "" : v) as BlockLayout })} />}
             </Field>
           )}
-          {section !== "referrals" && (
+          {section !== "referrals" && b.layout !== "tier" && (
             <Field label="Density" hint="How many cards fit in a row.">
               {(fid) => (
                 <Choice

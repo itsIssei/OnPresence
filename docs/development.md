@@ -68,7 +68,7 @@ cd web && npm run lint && npx tsc -b
 
 ## Vault blocks
 
-- The vault page is `Settings.VaultBlocks`, a list rendered top to bottom (`models.VaultBlock`). Types: `section` (`section`, `layout`, `density`, `title`), `text` (`title`, plain `body`, max 2000 characters), `stats`, `featured`, `recent` (`count`, 1 to 24). The sticky top bar is not a block. At most 30 blocks; a section is in at most one block.
+- The vault page is `Settings.VaultBlocks`, a list rendered top to bottom (`models.VaultBlock`). Types: `section` (`section`, `layout`, `density`, `title`) (layouts: `grid`, `list`; games also `tier`, which groups by `badge_type` into S, A, B and C rows; a custom case also `wide` or its own layout), `text` (`title`, plain `body`, max 2000 characters), `stats`, `featured`, `recent` (`count`, 1 to 24). The sticky top bar is not a block. At most 30 blocks; a section is in at most one block.
 - `Normalize` drops unknown types, bad section ids, repeats and extras, and stays pure. Case existence is checked on save, restore and case delete through `Settings.PruneCases`.
 - `Sections` stays for old clients and is rebuilt from the section blocks on every `Normalize`. A payload or stored settings with `vault_blocks` missing (nil) derive one default `section` block per `Sections` entry; an empty list is an empty page.
 - `featured` and `recent` are computed in the browser from the `/api/v1/vault` payload. There is no extra endpoint, and no migration.

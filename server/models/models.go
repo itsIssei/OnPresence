@@ -250,6 +250,10 @@ func SectionLayouts(section string) []string {
 	if section == "referrals" {
 		return []string{"grid"}
 	}
+	if section == "games" {
+		// tier groups games by badge_type, the only ordered grade there is.
+		return []string{"grid", "list", "tier"}
+	}
 	return []string{"grid", "list"}
 }
 

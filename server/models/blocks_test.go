@@ -155,3 +155,27 @@ func TestPruneCases(t *testing.T) {
 		t.Fatalf("sections: %v", s.Sections)
 	}
 }
+
+func TestTierLayoutOnlyForGames(t *testing.T) {
+	s := DefaultSettings()
+	s.VaultBlocks = []VaultBlock{
+		{Type: "section", Section: "games", Layout: "tier", Density: "compact"},
+		{Type: "section", Section: "anime", Layout: "tier"},
+		{Type: "section", Section: "manga", Layout: "list"},
+		{Type: "section", Section: "music", Layout: "tier"},
+		{Type: "section", Section: "referrals", Layout: "tier"},
+		{Type: "section", Section: "case:4", Layout: "tier"},
+	}
+	s = normalized(s)
+	want := []VaultBlock{
+		{Type: "section", Section: "games", Layout: "tier", Density: "compact"},
+		{Type: "section", Section: "anime", Layout: "grid", Density: "normal"},
+		{Type: "section", Section: "manga", Layout: "list", Density: "normal"},
+		{Type: "section", Section: "music", Layout: "grid", Density: "normal"},
+		{Type: "section", Section: "referrals", Layout: "grid", Density: "normal"},
+		{Type: "section", Section: "case:4", Layout: "", Density: "normal"},
+	}
+	if !reflect.DeepEqual(s.VaultBlocks, want) {
+		t.Fatalf("tier layout: %+v", s.VaultBlocks)
+	}
+}

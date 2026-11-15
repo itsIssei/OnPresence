@@ -34,6 +34,8 @@ export const strings = {
   noResults: "No results.",
   playing: "Now playing",
   details: "Details",
+  // Tier list rows of the games section, best first: [badge_type, label].
+  tiers: [["masterpiece", "S"], ["good", "A"], ["okay", "B"], ["trash", "C"]] as ReadonlyArray<readonly [string, string]>,
 };
 
 export type StatusKind = "game" | "anime" | "manga" | "case";

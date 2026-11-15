@@ -17,7 +17,7 @@ export function caseSectionId(id: string): number | null {
 }
 
 export type BlockType = "section" | "text" | "stats" | "featured" | "recent";
-export type BlockLayout = "" | "grid" | "wide" | "list";
+export type BlockLayout = "" | "grid" | "wide" | "list" | "tier";
 export type BlockDensity = "compact" | "normal" | "large";
 export const BLOCK_DENSITIES: BlockDensity[] = ["compact", "normal", "large"];
 export const MAX_BLOCKS = 30;
@@ -39,7 +39,8 @@ export interface VaultBlock {
 /** The layouts a section block may use; the first one is the default. */
 export function sectionLayouts(id: string): BlockLayout[] {
   if (caseSectionId(id) !== null) return ["", "grid", "wide", "list"];
-  return id === "referrals" ? ["grid"] : ["grid", "list"];
+  if (id === "referrals") return ["grid"];
+  return id === "games" ? ["grid", "list", "tier"] : ["grid", "list"];
 }
 export type FontId = "sora" | "inter" | "mono" | "cinzel" | "orbitron" | "gothic" | "pirata" | "creepster";
 export type DiscordStatus = "auto" | "online" | "idle" | "dnd" | "offline";

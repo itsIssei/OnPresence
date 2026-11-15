@@ -239,7 +239,8 @@ export function Vault({ profile, vault, audio, route, onClose }: Props) {
         )}
         {caseView && <CaseGrid c={caseView} density={density} items={byStatus(data.cases.get(caseView.id) ?? [])} t={t} onOpen={(item) => openDetail({ kind: "case", item, aspect: caseView.aspect, caseId: caseView.id })} />}
         {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => openDetail({ kind: "entry", item })} />}
-        {id === "games" && (
+        {id === "games" && b.layout === "tier" && <TierList games={byStatus(data.games)} t={t} onOpen={(g) => openDetail({ kind: "game", item: g })} />}
+        {id === "games" && b.layout !== "tier" && (
           <div className={cn("grid", list ? "grid-cols-1 gap-2" : cn("gap-4", GRID_COLS.games[density]))}>
             {byStatus(data.games).map((g) =>
               list ? (
@@ -480,6 +481,38 @@ function GameCard({ g, t, onOpen }: { g: Game; t: Strings; onOpen: () => void })
     </button>
   );
 }
+
+/** Games grouped by badge_type into S, A, B and C rows. Empty rows are left out. */
+function TierList({ games, t, onOpen }: { games: Game[]; t: Strings; onOpen: (g: Game) => void }) {
+  return (
+    <div className="grid gap-2">
+      {t.tiers.map(([badge, letter]) => {
+        const row = games.filter((g) => g.badge_type === badge).sort((a, z) => a.sort_order - z.sort_order);
+        if (!row.length) return null;
+        return (
+          <div key={badge} className="flex overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03]">
+            <div className={cn("grid w-11 flex-none place-items-center font-display text-xl font-extrabold text-white sm:w-16 sm:text-3xl", TIER_TONE[badge])} aria-label={BADGE_TYPE_LABEL[badge]}>
+              {letter}
+            </div>
+            <div className="flex min-w-0 flex-1 flex-wrap gap-2 p-2">
+              {row.map((g) => (
+                <button key={g.id} type="button" onClick={() => onOpen(g)} aria-label={`${g.title}: ${t.details}`} title={g.title} className="group w-[7.25rem] text-left sm:w-36">
+                  <div className="relative aspect-[460/215] overflow-hidden rounded-lg bg-black/40">
+                    <Cover src={g.cover_image} alt={g.title} />
+                    <StatusStrip status={g.status} kind="game" />
+                  </div>
+                  <p className="mt-1 truncate text-[11px] font-semibold text-white/85">{g.title}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const TIER_TONE: Record<string, string> = { masterpiece: "bg-rose-500/80", good: "bg-amber-500/80", okay: "bg-emerald-600/80", trash: "bg-slate-500/70" };
 
 function MediaCard({ m, t, onOpen }: { m: Media; t: Strings; onOpen: () => void }) {
   return (
