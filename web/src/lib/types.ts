@@ -15,6 +15,32 @@ export function caseSectionId(id: string): number | null {
   const m = /^case:([1-9]\d*)$/.exec(id);
   return m ? Number(m[1]) : null;
 }
+
+export type BlockType = "section" | "text" | "stats" | "featured" | "recent";
+export type BlockLayout = "" | "grid" | "wide" | "list";
+export type BlockDensity = "compact" | "normal" | "large";
+export const BLOCK_DENSITIES: BlockDensity[] = ["compact", "normal", "large"];
+export const MAX_BLOCKS = 30;
+export const MAX_BLOCK_BODY = 2000;
+export const MAX_RECENT = 24;
+export const DEFAULT_RECENT = 8;
+
+/** One block of the vault page, top to bottom. Mirrors models.VaultBlock. */
+export interface VaultBlock {
+  type: BlockType;
+  section?: SectionId; // section
+  layout?: BlockLayout; // section; "" (cases only) keeps the case's own layout
+  density?: BlockDensity; // section
+  title?: string; // all but section: heading; section: replaces the default label
+  body?: string; // text
+  count?: number; // recent
+}
+
+/** The layouts a section block may use; the first one is the default. */
+export function sectionLayouts(id: string): BlockLayout[] {
+  if (caseSectionId(id) !== null) return ["", "grid", "wide", "list"];
+  return id === "referrals" ? ["grid"] : ["grid", "list"];
+}
 export type FontId = "sora" | "inter" | "mono" | "cinzel" | "orbitron" | "gothic" | "pirata" | "creepster";
 export type DiscordStatus = "auto" | "online" | "idle" | "dnd" | "offline";
 
@@ -51,7 +77,8 @@ export interface Settings {
   vault_icon: string;
   vault_steam_badge: string;
   collection_score: string;
-  sections: SectionId[];
+  sections: SectionId[]; // kept in sync with the section blocks
+  vault_blocks: VaultBlock[];
 }
 
 export interface Profile {

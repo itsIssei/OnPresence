@@ -70,7 +70,11 @@ type Settings struct {
 	VaultIcon       string   `json:"vault_icon"`
 	VaultSteamBadge string   `json:"vault_steam_badge"`
 	CollectionScore string   `json:"collection_score"`
-	Sections        []string `json:"sections"` // visible sections, in display order: fixed ids plus "case:<id>" for custom cases
+	Sections        []string `json:"sections"` // visible sections, in display order: fixed ids plus "case:<id>" for custom cases. Kept in sync with VaultBlocks.
+	// VaultBlocks is the page layout of the vault, top to bottom. nil (a
+	// payload or stored settings without the field) means: derive one "section"
+	// block per entry of Sections. An empty list is an empty page.
+	VaultBlocks []VaultBlock `json:"vault_blocks"`
 }
 
 var (
@@ -150,26 +154,35 @@ func (s *Settings) Normalize() {
 	s.AvatarZoom = clampI(s.AvatarZoom, 50, 200)
 	s.GateText = truncate(s.GateText, 60)
 
-	// Sections: keep known ids and well-formed "case:<id>" entries once, in
-	// the given order. Whether a case still exists is the store's concern.
+	// Blocks are the source of truth for the vault layout. Without blocks they
+	// come from Sections; Sections is then rebuilt from the blocks, so both
+	// always agree.
+	if s.VaultBlocks == nil {
+		s.VaultBlocks = DeriveBlocks(cleanSections(s.Sections))
+	}
+	s.VaultBlocks = cleanBlocks(s.VaultBlocks)
+	s.Sections = SectionsOf(s.VaultBlocks)
+}
+
+// cleanSections keeps known ids and well-formed "case:<id>" entries once, in
+// the given order. Whether a case still exists is the store's concern. A nil
+// list means "all fixed sections".
+func cleanSections(in []string) []string {
+	if in == nil {
+		return append([]string(nil), SectionIDs...)
+	}
 	seen := map[string]bool{}
-	var secs []string
-	for _, id := range s.Sections {
+	out := []string{}
+	for _, id := range in {
 		if seen[id] {
 			continue
 		}
 		if _, isCase := CaseSectionID(id); contains(SectionIDs, id) || isCase {
 			seen[id] = true
-			secs = append(secs, id)
+			out = append(out, id)
 		}
 	}
-	if s.Sections == nil {
-		secs = append([]string(nil), SectionIDs...)
-	}
-	if secs == nil {
-		secs = []string{}
-	}
-	s.Sections = secs
+	return out
 }
 
 // CaseSection is the Sections entry for a custom case.
@@ -189,15 +202,111 @@ func CaseSectionID(s string) (int64, bool) {
 	return id, true
 }
 
-// KeepCases returns sections without the "case:<id>" entries whose case does
-// not exist.
-func KeepCases(sections []string, exists func(id int64) bool) []string {
-	out := make([]string, 0, len(sections))
-	for _, sec := range sections {
-		if id, isCase := CaseSectionID(sec); isCase && !exists(id) {
+// PruneCases drops the section blocks of "case:<id>" sections whose case does
+// not exist, and rebuilds Sections.
+func (s *Settings) PruneCases(exists func(id int64) bool) {
+	out := make([]VaultBlock, 0, len(s.VaultBlocks))
+	for _, b := range s.VaultBlocks {
+		if id, isCase := CaseSectionID(b.Section); b.Type == "section" && isCase && !exists(id) {
 			continue
 		}
-		out = append(out, sec)
+		out = append(out, b)
+	}
+	s.VaultBlocks = out
+	s.Sections = SectionsOf(out)
+}
+
+// VaultBlock is one block of the vault page. Which fields apply depends on
+// Type; Normalize clears the others.
+type VaultBlock struct {
+	Type    string `json:"type"`              // see BlockTypes
+	Section string `json:"section,omitempty"` // section: a fixed id or "case:<id>"
+	Layout  string `json:"layout,omitempty"`  // section: see SectionLayouts
+	Density string `json:"density,omitempty"` // section: see BlockDensities
+	Title   string `json:"title,omitempty"`   // all but section: heading; section: replaces the default label
+	Body    string `json:"body,omitempty"`    // text: plain text
+	Count   int    `json:"count,omitempty"`   // recent: number of items
+}
+
+const (
+	MaxVaultBlocks   = 30
+	MaxBlockTitle    = 120
+	MaxBlockBody     = 2000
+	MaxRecentItems   = 24
+	DefaultRecentNum = 8
+)
+
+var (
+	BlockTypes     = []string{"section", "text", "stats", "featured", "recent"}
+	BlockDensities = []string{"compact", "normal", "large"}
+)
+
+// SectionLayouts returns the layouts a section block may use, the first one
+// being the default. "" (a custom case only) keeps the case's own layout.
+func SectionLayouts(section string) []string {
+	if _, isCase := CaseSectionID(section); isCase {
+		return []string{"", "grid", "wide", "list"}
+	}
+	if section == "referrals" {
+		return []string{"grid"}
+	}
+	return []string{"grid", "list"}
+}
+
+// DeriveBlocks returns one default section block per section.
+func DeriveBlocks(sections []string) []VaultBlock {
+	out := make([]VaultBlock, 0, len(sections))
+	for _, id := range sections {
+		out = append(out, VaultBlock{Type: "section", Section: id, Layout: SectionLayouts(id)[0], Density: "normal"})
+	}
+	return out
+}
+
+// SectionsOf lists the sections of the section blocks, in block order.
+func SectionsOf(blocks []VaultBlock) []string {
+	out := []string{}
+	for _, b := range blocks {
+		if b.Type == "section" {
+			out = append(out, b.Section)
+		}
+	}
+	return out
+}
+
+// cleanBlocks drops unknown types, bad or repeated section references and
+// blocks over the limit, and clamps every field. It does not look at the
+// database: whether a case exists is checked when the profile is saved.
+func cleanBlocks(in []VaultBlock) []VaultBlock {
+	out := make([]VaultBlock, 0, len(in))
+	seen := map[string]bool{}
+	for _, b := range in {
+		if len(out) >= MaxVaultBlocks {
+			break
+		}
+		if !contains(BlockTypes, b.Type) {
+			continue
+		}
+		c := VaultBlock{Type: b.Type, Title: truncate(b.Title, MaxBlockTitle)}
+		switch b.Type {
+		case "section":
+			_, isCase := CaseSectionID(b.Section)
+			if (!contains(SectionIDs, b.Section) && !isCase) || seen[b.Section] {
+				continue
+			}
+			seen[b.Section] = true
+			layouts := SectionLayouts(b.Section)
+			c.Section = b.Section
+			c.Layout = oneOf(b.Layout, layouts, layouts[0])
+			c.Density = oneOf(b.Density, BlockDensities, "normal")
+		case "text":
+			c.Body = truncate(b.Body, MaxBlockBody)
+		case "recent":
+			c.Count = DefaultRecentNum
+			if b.Count > 0 {
+				c.Count = clampI(b.Count, 1, MaxRecentItems)
+			}
+		}
+		out = append(out, c)
 	}
 	return out
 }

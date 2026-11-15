@@ -1,9 +1,6 @@
 import { useState } from "react";
-import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { EyeOff, GripVertical, Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
+import { EyeOff, Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge as UIBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,13 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, type AniListResult, type GameSearchResult } from "@/lib/api";
 import { BADGE_ICONS, BadgeGlyph } from "@/lib/icons";
 import { statusLabel, type StatusKind } from "@/lib/i18n";
-import { caseSectionId, type Case, type CaseItem, type FixedSectionId, ITEM_STATUSES, type Game, type ItemStatus, type Media, Playlist, Referral, SectionId, Track } from "@/lib/types";
+import { type Case, type CaseItem, type FixedSectionId, ITEM_STATUSES, type Game, type ItemStatus, type Media, Playlist, Referral, Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDraft } from "../draft";
+import { useBlocks } from "../blocks";
+import { BlockEditor } from "./VaultBlocks";
 import { CollectionManager, type FieldDef } from "../Collection";
 import { Field, MediaInput, PageHeader, Section } from "../kit";
 
-const SECTION_LABEL: Record<FixedSectionId, string> = { referrals: "Projects & referrals", games: "Games", anime: "Anime", manga: "Manga & manhwa", music: "Music" };
 const TABS: { id: FixedSectionId; label: string }[] = [
   { id: "games", label: "Games" },
   { id: "anime", label: "Anime" },
@@ -30,13 +28,8 @@ const TABS: { id: FixedSectionId; label: string }[] = [
 
 export function VaultPage() {
   const { draft, setSetting } = useDraft();
+  const { shown, setShown } = useBlocks();
   const s = draft?.settings;
-  const shown = (id: SectionId) => !!s?.sections.includes(id);
-  const setShown = (id: SectionId, on: boolean) => {
-    if (!s) return;
-    const order: SectionId[] = [...s.sections, ...TABS.map((t) => t.id).filter((x) => !s.sections.includes(x))];
-    setSetting("sections", on ? order.filter((x) => x === id || s.sections.includes(x)) : s.sections.filter((x) => x !== id));
-  };
 
   return (
     <>
@@ -96,28 +89,8 @@ export function VaultPage() {
 
 function VaultSettings() {
   const { draft, setSetting } = useDraft();
-  const casesQuery = useQuery({ queryKey: ["admin", "cases"], queryFn: () => api.list("cases") });
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   if (!draft) return null;
   const s = draft.settings;
-  const cases = casesQuery.data ?? [];
-  const caseName = new Map(cases.map((c) => [`case:${c.id}`, c.name]));
-  // Until the case list has loaded, keep every case entry as it is.
-  const known = (id: SectionId) => id in SECTION_LABEL || caseName.has(id) || (!casesQuery.isSuccess && caseSectionId(id) !== null);
-  const label = (id: SectionId) => SECTION_LABEL[id as FixedSectionId] ?? caseName.get(id) ?? id;
-  // Listed sections first, then the hidden ones. A case that no longer exists is left out.
-  const listed = s.sections.filter(known);
-  const all: SectionId[] = [
-    ...listed,
-    ...(Object.keys(SECTION_LABEL) as SectionId[]).filter((x) => !listed.includes(x)),
-    ...cases.map((c) => `case:${c.id}` as SectionId).filter((x) => !listed.includes(x)),
-  ];
-
-  const onDragEnd = (e: DragEndEvent) => {
-    if (!e.over || e.active.id === e.over.id) return;
-    const next = arrayMove(all, all.indexOf(e.active.id as SectionId), all.indexOf(e.over.id as SectionId));
-    setSetting("sections", next.filter((x) => listed.includes(x)));
-  };
 
   return (
     <div className="grid gap-5">
@@ -147,38 +120,10 @@ function VaultSettings() {
           )}
         </Field>
       </Section>
-      <Section title="Sections" description="Drag to change order. Switch off to hide a section.">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={all} strategy={verticalListSortingStrategy}>
-            <ul className="grid gap-2">
-              {all.map((id) => (
-                <SectionRow
-                  key={id}
-                  id={id}
-                  label={label(id)}
-                  on={listed.includes(id)}
-                  toggle={(on) => setSetting("sections", on ? all.filter((x) => x === id || listed.includes(x)) : listed.filter((x) => x !== id))}
-                />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
+      <Section title="Page blocks" description="The vault page, top to bottom. Add text, stats, featured or recent rows and your sections; drag or use the arrows to reorder. The top bar with the title and search stays in place.">
+        <BlockEditor />
       </Section>
     </div>
-  );
-}
-
-function SectionRow({ id, label, on, toggle }: { id: SectionId; label: string; on: boolean; toggle: (on: boolean) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-  return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="flex items-center gap-3 rounded-xl border bg-card/70 p-3">
-      <button type="button" className="cursor-grab touch-none text-muted-foreground" aria-label="Drag" {...attributes} {...listeners}>
-        <GripVertical className="size-4" />
-      </button>
-      <span className="flex-1 truncate text-sm font-medium">{label}</span>
-      {caseSectionId(id) !== null && <UIBadge variant="outline">Custom</UIBadge>}
-      <Switch checked={on} onCheckedChange={toggle} aria-label={`Show ${label}`} />
-    </li>
   );
 }
 
@@ -595,7 +540,7 @@ const caseItemFields: FieldDef<CaseItem>[] = [
 
 function CasesTab() {
   const qc = useQueryClient();
-  const { draft } = useDraft();
+  const { shown } = useBlocks();
   const q = useQuery({ queryKey: ["admin", "cases"], queryFn: () => api.list("cases") });
   const [picked, setPicked] = useState<number | null>(null);
   const cases = q.data ?? [];
@@ -606,12 +551,12 @@ function CasesTab() {
     qc.invalidateQueries({ queryKey: ["admin", "caseitems"] });
     qc.invalidateQueries({ queryKey: ["admin", "profile"] });
   };
-  const visible = (c: Case) => !!draft?.settings.sections.includes(`case:${c.id}`);
+  const visible = (c: Case) => shown(`case:${c.id}`);
 
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        Your own categories (films, books, figures…). A new case stays hidden until you switch it on under Settings → Sections, where you can also move it between the other sections.
+        Your own categories (films, books, figures…). A new case stays hidden until you add it under Settings → Page blocks, where you can also place it between the other blocks.
       </p>
       <Section title="Cases">
         <CollectionManager

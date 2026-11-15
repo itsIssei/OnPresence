@@ -25,6 +25,7 @@ export const strings = {
   copied: "Copied!",
   join: "Join",
   featured: "Featured",
+  recent: "Recently added",
   tracks: "tracks",
   listenOn: "Listen on",
   review: "Review",

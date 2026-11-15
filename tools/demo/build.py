@@ -180,6 +180,20 @@ def content(avatar_url, banner_url, g, m, p, r, f):
         "vault_enabled": True, "vault_title": "Nova's Shelf", "vault_subtitle": "Games, anime and music that shaped my pixels.",
         "vault_badge": "Curated", "vault_icon": "/img/brand/vault.svg", "vault_steam_badge": "", "collection_score": "",
         "sections": ["referrals", "games", "anime", "manga", "music", "case:1"],
+        # Page layout of the vault, top to bottom. "sections" above is the list of
+        # its section blocks; the server keeps the two in sync.
+        "vault_blocks": [
+            {"type": "stats"},
+            {"type": "text", "title": "About this shelf", "body": "A small, honest shelf: what I play, watch, read and listen to.\nRatings are personal, never objective."},
+            {"type": "featured"},
+            {"type": "section", "section": "referrals", "layout": "grid", "density": "normal"},
+            {"type": "section", "section": "games", "layout": "grid", "density": "large"},
+            {"type": "section", "section": "anime", "layout": "grid", "density": "compact"},
+            {"type": "section", "section": "manga", "layout": "list", "density": "normal"},
+            {"type": "section", "section": "music", "layout": "grid", "density": "normal"},
+            {"type": "section", "section": "case:1", "layout": "", "density": "normal"},
+            {"type": "recent", "count": 6},
+        ],
     }
     profile = {
         "name": "Nova", "handle": "@nova.pixels", "title": "Pixel artist & speedrunner",

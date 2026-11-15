@@ -41,7 +41,7 @@ func (s *Server) putAdminProfile(w http.ResponseWriter, r *http.Request) {
 		LastfmAPIKey *string `json:"lastfm_api_key"` // omitted = keep, "" = clear
 	}
 	req.Settings = models.DefaultSettings()
-	if !decode(w, r, &req, 64<<10) {
+	if !decode(w, r, &req, 256<<10) {
 		return
 	}
 	p := req.Profile
@@ -59,7 +59,7 @@ func (s *Server) putAdminProfile(w http.ResponseWriter, r *http.Request) {
 		serverError(w, r, err)
 		return
 	}
-	p.Settings.Sections = models.KeepCases(p.Settings.Sections, func(id int64) bool { return ids[id] })
+	p.Settings.PruneCases(func(id int64) bool { return ids[id] })
 	if err := s.store.SaveProfile(r.Context(), p, req.SteamAPIKey, req.LastfmAPIKey); err != nil {
 		serverError(w, r, err)
 		return

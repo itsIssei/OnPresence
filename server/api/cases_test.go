@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -41,14 +42,16 @@ func (e *env) newCaseItem(caseID int64, title string) int64 {
 	return c.ID
 }
 
-// setSections saves the profile with the given sections and returns the
-// saved list.
+// setSections saves the profile with the given sections (as a client that
+// only knows the sections list) and returns the saved list.
 func (e *env) setSections(sections []string) []string {
 	e.t.Helper()
 	_, body := e.do("GET", "/api/v1/admin/profile", nil)
 	var p map[string]any
 	json.Unmarshal([]byte(body), &p)
-	p["settings"].(map[string]any)["sections"] = sections
+	st := p["settings"].(map[string]any)
+	st["sections"] = sections
+	delete(st, "vault_blocks")
 	res, body := e.do("PUT", "/api/v1/admin/profile", p)
 	if res.StatusCode != 200 {
 		e.t.Fatalf("save profile: %d %s", res.StatusCode, body)
@@ -392,5 +395,134 @@ func TestExistingCaseKeptWhenV1ListsIt(t *testing.T) {
 	}
 	if c := e.vaultCases(); len(c) != 1 {
 		t.Fatalf("case should be visible: %+v", c)
+	}
+}
+
+// profilePut saves the profile with the given settings changes and returns
+// the saved settings.
+func (e *env) putSettings(change func(st map[string]any)) (int, map[string]any) {
+	e.t.Helper()
+	_, body := e.do("GET", "/api/v1/admin/profile", nil)
+	var p map[string]any
+	json.Unmarshal([]byte(body), &p)
+	change(p["settings"].(map[string]any))
+	res, body := e.do("PUT", "/api/v1/admin/profile", p)
+	var out struct {
+		Settings map[string]any `json:"settings"`
+	}
+	json.Unmarshal([]byte(body), &out)
+	return res.StatusCode, out.Settings
+}
+
+func TestVaultBlocksSaveAndSync(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	books := e.newCase("Books")
+	e.newCaseItem(books, "A")
+	b1 := caseSec(books)
+
+	blocks := []any{
+		map[string]any{"type": "recent", "count": 4},
+		map[string]any{"type": "text", "title": "Hello", "body": "<b>x</b>"},
+		map[string]any{"type": "section", "section": "games", "layout": "list", "density": "compact"},
+		map[string]any{"type": "section", "section": b1},
+		map[string]any{"type": "section", "section": "case:9999"}, // no such case
+		map[string]any{"type": "section", "section": "games"},     // repeat
+		map[string]any{"type": "hero"},
+	}
+	code, st := e.putSettings(func(st map[string]any) { st["vault_blocks"] = blocks })
+	if code != 200 {
+		t.Fatalf("save: %d", code)
+	}
+	want := `[{"type":"recent","count":4},{"type":"text","title":"Hello","body":"\u003cb\u003ex\u003c/b\u003e"},` +
+		`{"type":"section","section":"games","layout":"list","density":"compact"},` +
+		`{"type":"section","section":"` + b1 + `","density":"normal"}]`
+	var wantBlocks any
+	json.Unmarshal([]byte(want), &wantBlocks)
+	if !reflect.DeepEqual(st["vault_blocks"], wantBlocks) {
+		t.Fatalf("blocks: %v\nwant %v", st["vault_blocks"], wantBlocks)
+	}
+	secs, _ := json.Marshal(st["sections"])
+	if string(secs) != `["games","`+b1+`"]` {
+		t.Fatalf("sections: %s", secs)
+	}
+	// The public profile and vault follow the blocks.
+	_, prof := e.do("GET", "/api/v1/profile", nil)
+	if !strings.Contains(prof, `"sections":["games","`+b1+`"]`) || !strings.Contains(prof, `"vault_blocks":[{"type":"recent"`) {
+		t.Fatalf("public profile: %s", prof)
+	}
+	if cs := e.vaultCases(); len(cs) != 1 || cs[0].ID != books {
+		t.Fatalf("vault cases: %+v", cs)
+	}
+
+	// Deleting the case removes its block.
+	e.do("DELETE", "/api/v1/admin/cases/"+jsonNum(books), nil)
+	_, body := e.do("GET", "/api/v1/admin/profile", nil)
+	if strings.Contains(body, b1) || !strings.Contains(body, `"sections":["games"]`) {
+		t.Fatalf("after delete: %s", body)
+	}
+
+	// An empty list is an empty page, not a request for the default.
+	_, st = e.putSettings(func(st map[string]any) { st["vault_blocks"] = []any{} })
+	if b, _ := json.Marshal(st["vault_blocks"]); string(b) != "[]" {
+		t.Fatalf("empty blocks: %s", b)
+	}
+	if b, _ := json.Marshal(st["sections"]); string(b) != "[]" {
+		t.Fatalf("empty sections: %s", b)
+	}
+
+	// A payload without blocks (an old client) derives them from sections.
+	_, st = e.putSettings(func(st map[string]any) {
+		delete(st, "vault_blocks")
+		st["sections"] = []any{"music", "games"}
+	})
+	var derived any
+	json.Unmarshal([]byte(`[{"type":"section","section":"music","layout":"grid","density":"normal"},{"type":"section","section":"games","layout":"grid","density":"normal"}]`), &derived)
+	if !reflect.DeepEqual(st["vault_blocks"], derived) {
+		t.Fatalf("derived: %v", st["vault_blocks"])
+	}
+}
+
+func TestVaultBlocksRestore(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	books := e.newCase("Books")
+	b1 := caseSec(books)
+	e.putSettings(func(st map[string]any) {
+		st["vault_blocks"] = []any{map[string]any{"type": "stats"}, map[string]any{"type": "section", "section": b1}, map[string]any{"type": "section", "section": "music"}}
+	})
+	_, exp := e.do("GET", "/api/v1/admin/export", nil)
+	var data map[string]any
+	json.Unmarshal([]byte(exp), &data)
+	if data["version"] != float64(2) {
+		t.Fatalf("export version: %v", data["version"])
+	}
+	// Blocks survive an export and restore.
+	res, body := e.do("POST", "/api/v1/admin/restore", data)
+	if res.StatusCode != 200 {
+		t.Fatalf("restore: %d %s", res.StatusCode, body)
+	}
+	_, prof := e.do("GET", "/api/v1/admin/profile", nil)
+	if !strings.Contains(prof, `"vault_blocks":[{"type":"stats"},{"type":"section","section":"`+b1+`"`) {
+		t.Fatalf("blocks after restore: %s", prof)
+	}
+	// A file without blocks gets the default derived from its sections.
+	st := data["profile"].(map[string]any)["settings"].(map[string]any)
+	delete(st, "vault_blocks")
+	st["sections"] = []any{"anime", "games"}
+	res, body = e.do("POST", "/api/v1/admin/restore", data)
+	if res.StatusCode != 200 {
+		t.Fatalf("restore: %d %s", res.StatusCode, body)
+	}
+	_, prof = e.do("GET", "/api/v1/admin/profile", nil)
+	if !strings.Contains(prof, `"sections":["anime","games"],"vault_blocks":[{"type":"section","section":"anime","layout":"grid","density":"normal"},{"type":"section","section":"games","layout":"grid","density":"normal"}]`) {
+		t.Fatalf("derived after restore: %s", prof)
+	}
+	// A block for a case that is not in the file is dropped.
+	st["vault_blocks"] = []any{map[string]any{"type": "section", "section": "case:9999"}, map[string]any{"type": "text", "body": "x"}}
+	res, _ = e.do("POST", "/api/v1/admin/restore", data)
+	_, prof = e.do("GET", "/api/v1/admin/profile", nil)
+	if res.StatusCode != 200 || strings.Contains(prof, "case:9999") || !strings.Contains(prof, `"vault_blocks":[{"type":"text","body":"x"}]`) {
+		t.Fatalf("stale case block: %d %s", res.StatusCode, prof)
 	}
 }

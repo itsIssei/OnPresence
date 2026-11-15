@@ -57,6 +57,59 @@
         "manga",
         "music",
         "case:1"
+      ],
+      "vault_blocks": [
+        {
+          "type": "stats"
+        },
+        {
+          "type": "text",
+          "title": "About this shelf",
+          "body": "A small, honest shelf: what I play, watch, read and listen to.\nRatings are personal, never objective."
+        },
+        {
+          "type": "featured"
+        },
+        {
+          "type": "section",
+          "section": "referrals",
+          "layout": "grid",
+          "density": "normal"
+        },
+        {
+          "type": "section",
+          "section": "games",
+          "layout": "grid",
+          "density": "large"
+        },
+        {
+          "type": "section",
+          "section": "anime",
+          "layout": "grid",
+          "density": "compact"
+        },
+        {
+          "type": "section",
+          "section": "manga",
+          "layout": "list",
+          "density": "normal"
+        },
+        {
+          "type": "section",
+          "section": "music",
+          "layout": "grid",
+          "density": "normal"
+        },
+        {
+          "type": "section",
+          "section": "case:1",
+          "layout": "",
+          "density": "normal"
+        },
+        {
+          "type": "recent",
+          "count": 6
+        }
       ]
     }
   },

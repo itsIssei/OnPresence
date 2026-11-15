@@ -148,7 +148,7 @@ func (s *Store) deleteCase(ctx context.Context, id int64) error {
 			return err
 		}
 		st := decodeSettings(raw)
-		st.Sections = models.KeepCases(st.Sections, func(c int64) bool { return c != id })
+		st.PruneCases(func(c int64) bool { return c != id })
 		b, err := json.Marshal(st)
 		if err != nil {
 			return err

@@ -3,7 +3,7 @@ import { ArrowLeft, Check, ChevronRight, Clock, Copy, ExternalLink, Pause, Play,
 import { siSpotify, siYoutubemusic } from "simple-icons";
 import { BadgeGlyph, BrandIcon } from "@/lib/icons";
 import { statusLabel, strings, type StatusKind, type Strings } from "@/lib/i18n";
-import { caseSectionId, ITEM_STATUSES, type Case, type CaseItem, type FixedSectionId, type Game, type ItemStatus, type Media, type Playlist, PublicProfile, Referral, SectionId, Vault as VaultData } from "@/lib/types";
+import { caseSectionId, DEFAULT_RECENT, ITEM_STATUSES, MAX_RECENT, type Case, type CaseItem, type FixedSectionId, type Game, type ItemStatus, type Media, type Playlist, PublicProfile, Referral, SectionId, type VaultBlock, Vault as VaultData, type BlockDensity } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { AudioController } from "@/site/audio";
 import { Modal, ModalDescription as DialogDescription, ModalTitle as DialogTitle } from "./Modal";
@@ -16,6 +16,32 @@ interface Props {
 }
 
 type Detail = { kind: "case"; item: CaseItem; aspect: Case["aspect"] } | { kind: "game"; item: Game } | { kind: "media"; item: Media } | { kind: "playlist"; item: Playlist } | { kind: "entry"; item: Referral };
+
+/** A tile of the featured and recent rows: any item of any section. */
+interface Entry {
+  key: string;
+  title: string;
+  sub: string;
+  image: string;
+  rating: string;
+  created: string;
+  featured: boolean;
+  detail: Detail;
+}
+
+// Grid columns per density. The "normal" column is the original fixed layout.
+const GRID_COLS = {
+  games: { compact: "grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4", normal: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3", large: "grid-cols-1 lg:grid-cols-2" },
+  media: {
+    compact: "grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7",
+    normal: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
+    large: "grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
+  },
+  music: { compact: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4", normal: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3", large: "grid-cols-1 lg:grid-cols-2" },
+} as const;
+
+const SIZE_STEPS = ["small", "medium", "large"] as const;
+const CASE_LAYOUT = { grid: "poster", wide: "wide", list: "list" } as const;
 
 export function Vault({ profile, vault, audio, onClose }: Props) {
   const s = profile.settings;
@@ -47,21 +73,172 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
     [vault, q],
   );
 
+  // Every visible item of every section, for the featured and recent rows.
+  const entries = useMemo(() => {
+    const media = (m: Media): Entry => ({ key: `m${m.id}`, title: m.title, sub: m.progress_info, image: m.cover_image, rating: m.rating, created: m.created_at, featured: m.is_featured, detail: { kind: "media", item: m } });
+    return [
+      ...vault.games.map((g): Entry => ({ key: `g${g.id}`, title: g.title, sub: g.subtitle || g.category, image: g.cover_image, rating: g.rating, created: g.created_at, featured: g.is_featured, detail: { kind: "game", item: g } })),
+      ...vault.anime.map(media),
+      ...vault.manga.map(media),
+      ...vault.playlists.map((p): Entry => ({ key: `p${p.id}`, title: p.title, sub: p.artist || p.subtitle, image: p.cover_image, rating: "", created: p.created_at, featured: p.is_featured, detail: { kind: "playlist", item: p } })),
+      ...vault.referrals.map((r): Entry => ({ key: `r${r.id}`, title: r.title, sub: r.game_name, image: r.image_url, rating: "", created: r.created_at, featured: false, detail: { kind: "entry", item: r } })),
+      ...vault.cases.flatMap((c) => c.items.map((i): Entry => ({ key: `c${i.id}`, title: i.title, sub: i.subtitle, image: i.image, rating: i.rating, created: i.created_at, featured: i.is_featured, detail: { kind: "case", item: i, aspect: c.aspect } }))),
+    ];
+  }, [vault]);
+
   const total = (id: SectionId) => {
     if (caseSectionId(id) !== null) return caseOf(id)?.items.length ?? 0;
     const f = id as FixedSectionId;
     return f === "music" ? vault.playlists.length : vault[f].length;
   };
-  const found = (id: SectionId) => {
-    const c = caseOf(id);
-    return c ? data.cases.get(c.id)?.length ?? 0 : data[id as FixedSectionId].length;
-  };
-  // A "case:<id>" entry without a case (deleted, old snapshot) is skipped.
-  const sections = s.sections.filter((id) => total(id) > 0);
-  const visible = sections.filter((id) => filter === "all" || filter === id);
+  // A section block for a case that is gone (deleted, old snapshot) or without items is skipped.
+  const blocks = s.vault_blocks ?? [];
+  const sectionBlocks = blocks.filter((b) => b.type === "section" && b.section && total(b.section) > 0);
+  const sections = sectionBlocks.map((b) => b.section as SectionId);
   const fixedLabels: Record<FixedSectionId, string> = { referrals: t.referrals, games: t.games, anime: t.anime, manga: t.manga, music: t.music };
-  const label = (id: SectionId) => caseOf(id)?.name ?? fixedLabels[id as FixedSectionId];
-  const empty = visible.every((id) => found(id) === 0);
+  const label = (id: SectionId) => sectionBlocks.find((b) => b.section === id)?.title || caseOf(id)?.name || fixedLabels[id as FixedSectionId];
+
+  const heading = (text: string, icon?: string) => (
+    <h3 className="mb-4 flex items-center gap-2 font-display text-base font-bold uppercase tracking-[0.12em] text-white/90">
+      {icon ? <BadgeGlyph icon={icon} className="size-4 text-brand" /> : <span className="size-2 rounded-full bg-brand shadow-[0_0_10px_var(--brand)]" />}
+      <span className="min-w-0 break-words">{text}</span>
+    </h3>
+  );
+
+  const renderSection = (b: VaultBlock) => {
+    const id = b.section as SectionId;
+    if (filter !== "all" && filter !== id) return null;
+    const c = caseOf(id);
+    const items = c ? data.cases.get(c.id) ?? [] : data[id as FixedSectionId];
+    if (!items.length) return null;
+    const fixed = id as FixedSectionId;
+    const density = b.density ?? "normal";
+    const list = b.layout === "list";
+    const kind: StatusKind | null = c ? "case" : fixed === "games" ? "game" : fixed === "anime" || fixed === "manga" ? fixed : null;
+    const all: { status: ItemStatus }[] = c ? c.items : fixed === "games" || fixed === "anime" || fixed === "manga" ? vault[fixed] : [];
+    const present = ITEM_STATUSES.filter((st) => all.some((x) => x.status === st));
+    const active = statusFilter[id] && present.includes(statusFilter[id]) ? statusFilter[id] : undefined;
+    const byStatus = <T extends { status: ItemStatus }>(l: T[]) => (active ? l.filter((x) => x.status === active) : l);
+    const caseView = c && b.layout ? { ...c, layout: CASE_LAYOUT[b.layout as keyof typeof CASE_LAYOUT] ?? c.layout } : c;
+    return (
+      <div key={id}>
+        {heading(label(id), c?.icon)}
+        {kind && present.length > 1 && (
+          <div className="-mt-1 mb-4 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="group" aria-label={label(id)}>
+            {([undefined, ...present] as const).map((st) => (
+              <button
+                key={st ?? "all"}
+                type="button"
+                onClick={() => setStatusFilter((prev) => ({ ...prev, [id]: st }))}
+                aria-pressed={active === st}
+                className={cn(
+                  "flex-none rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                  active === st ? "bg-white/15 text-white" : "bg-white/5 text-white/55 hover:bg-white/10 hover:text-white",
+                )}
+              >
+                {st ? statusLabel(st, kind) : t.all}
+              </button>
+            ))}
+          </div>
+        )}
+        {caseView && <CaseGrid c={caseView} density={density} items={byStatus(data.cases.get(caseView.id) ?? [])} t={t} onOpen={(item) => setDetail({ kind: "case", item, aspect: caseView.aspect })} />}
+        {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => setDetail({ kind: "entry", item })} />}
+        {id === "games" && (
+          <div className={cn("grid", list ? "grid-cols-1 gap-2" : cn("gap-4", GRID_COLS.games[density]))}>
+            {byStatus(data.games).map((g) =>
+              list ? (
+                <ListRow key={g.id} image={g.cover_image} title={g.title} sub={[g.category, g.hours_played ? `${g.hours_played}${t.hours}` : ""].filter(Boolean).join(" · ")} rating={g.rating} status={g.status} kind="game" thumb="aspect-[460/215] w-28" onOpen={() => setDetail({ kind: "game", item: g })} />
+              ) : (
+                <GameCard key={g.id} g={g} t={t} onOpen={() => setDetail({ kind: "game", item: g })} />
+              ),
+            )}
+          </div>
+        )}
+        {(id === "anime" || id === "manga") && (
+          <div className={cn("grid", list ? "grid-cols-1 gap-2" : cn("gap-4", GRID_COLS.media[density]))}>
+            {byStatus(data[id]).map((m) =>
+              list ? (
+                <ListRow key={m.id} image={m.cover_image} title={m.title} sub={m.progress_info || m.tags} rating={m.rating} status={m.status} kind={mediaKind(m)} thumb="aspect-[2/3] w-14" onOpen={() => setDetail({ kind: "media", item: m })} />
+              ) : (
+                <MediaCard key={m.id} m={m} t={t} onOpen={() => setDetail({ kind: "media", item: m })} />
+              ),
+            )}
+          </div>
+        )}
+        {id === "music" && (
+          <div className={cn("grid gap-4", list ? "grid-cols-1" : GRID_COLS.music[density])}>
+            {data.music.map((p) => (
+              <PlaylistCard key={p.id} p={p} t={t} audio={audio} onOpen={() => setDetail({ kind: "playlist", item: p })} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderBlock = (b: VaultBlock, i: number) => {
+    if (b.type === "section") return b.section && sections.includes(b.section) ? renderSection(b) : null;
+    // Only sections are shown while a section chip is selected.
+    if (filter !== "all") return null;
+    if (b.type === "text") {
+      if (q || (!b.title && !b.body)) return null;
+      return (
+        <div key={i}>
+          {b.title && heading(b.title)}
+          {b.body && <p className="whitespace-pre-line break-words text-sm leading-relaxed text-white/75">{b.body}</p>}
+        </div>
+      );
+    }
+    if (b.type === "stats") {
+      if (q) return null;
+      const st = vault.stats;
+      return (
+        <div key={i}>
+          {b.title && heading(b.title)}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {([[t.games, st.games], [t.anime, st.anime], [t.manga, st.manga], [t.music, st.playlists]] as const).map(([name, n]) => (
+              <div key={name} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+                <p className="font-display text-2xl font-bold tabular-nums text-white">{n}</p>
+                <p className="mt-0.5 truncate text-xs uppercase tracking-wider text-white/50">{name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    // featured / recent
+    const pool = entries.filter((e) => match(e.title, e.sub));
+    const row =
+      b.type === "featured"
+        ? pool.filter((e) => e.featured).slice(0, MAX_RECENT)
+        : [...pool].sort((a, z) => (a.created < z.created ? 1 : a.created > z.created ? -1 : 0)).slice(0, b.count || DEFAULT_RECENT);
+    if (!row.length) return null;
+    return (
+      <div key={i}>
+        {heading(b.title || (b.type === "featured" ? t.featured : t.recent))}
+        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 [scrollbar-width:none]">
+          {row.map((e) => (
+            <button key={e.key} type="button" onClick={() => setDetail(e.detail)} className="group w-32 flex-none text-left sm:w-36" aria-label={`${e.title}: ${t.details}`}>
+              <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-white/[0.07] bg-black/40 transition group-hover:-translate-y-0.5 group-hover:border-white/15">
+                <Cover src={e.image} alt={e.title} />
+                {e.rating && (
+                  <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur">
+                    <Star className="size-3 fill-current text-amber-400" />
+                    {e.rating}
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-white">{e.title}</p>
+              {e.sub && <p className="mt-0.5 truncate text-xs text-white/50">{e.sub}</p>}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const rendered = blocks.map(renderBlock);
+  const empty = rendered.every((n) => n === null);
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6" aria-label={s.vault_title}>
@@ -121,68 +298,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
 
       {empty && <p className="py-16 text-center text-sm text-white/50">{q ? t.noResults : t.empty}</p>}
 
-      <div className="flex flex-col gap-12">
-        {visible.map((id) => {
-          const c = caseOf(id);
-          const items = c ? data.cases.get(c.id) ?? [] : data[id as FixedSectionId];
-          if (!items.length) return null;
-          const fixed = id as FixedSectionId;
-          const kind: StatusKind | null = c ? "case" : fixed === "games" ? "game" : fixed === "anime" || fixed === "manga" ? fixed : null;
-          const all: { status: ItemStatus }[] = c ? c.items : fixed === "games" || fixed === "anime" || fixed === "manga" ? vault[fixed] : [];
-          const present = ITEM_STATUSES.filter((st) => all.some((x) => x.status === st));
-          const active = statusFilter[id] && present.includes(statusFilter[id]) ? statusFilter[id] : undefined;
-          const byStatus = <T extends { status: ItemStatus }>(list: T[]) => (active ? list.filter((x) => x.status === active) : list);
-          return (
-            <div key={id}>
-              <h3 className="mb-4 flex items-center gap-2 font-display text-base font-bold uppercase tracking-[0.12em] text-white/90">
-                {c && c.icon ? <BadgeGlyph icon={c.icon} className="size-4 text-brand" /> : <span className="size-2 rounded-full bg-brand shadow-[0_0_10px_var(--brand)]" />}
-                {label(id)}
-              </h3>
-              {kind && present.length > 1 && (
-                <div className="-mt-1 mb-4 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="group" aria-label={label(id)}>
-                  {([undefined, ...present] as const).map((st) => (
-                    <button
-                      key={st ?? "all"}
-                      type="button"
-                      onClick={() => setStatusFilter((prev) => ({ ...prev, [id]: st }))}
-                      aria-pressed={active === st}
-                      className={cn(
-                        "flex-none rounded-full px-3 py-1 text-[11px] font-semibold transition",
-                        active === st ? "bg-white/15 text-white" : "bg-white/5 text-white/55 hover:bg-white/10 hover:text-white",
-                      )}
-                    >
-                      {st ? statusLabel(st, kind) : t.all}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {c && <CaseGrid c={c} items={byStatus(data.cases.get(c.id) ?? [])} t={t} onOpen={(item) => setDetail({ kind: "case", item, aspect: c.aspect })} />}
-              {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => setDetail({ kind: "entry", item })} />}
-              {id === "games" && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {byStatus(data.games).map((g) => (
-                    <GameCard key={g.id} g={g} t={t} onOpen={() => setDetail({ kind: "game", item: g })} />
-                  ))}
-                </div>
-              )}
-              {(id === "anime" || id === "manga") && (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {byStatus(data[id]).map((m) => (
-                    <MediaCard key={m.id} m={m} t={t} onOpen={() => setDetail({ kind: "media", item: m })} />
-                  ))}
-                </div>
-              )}
-              {id === "music" && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {data.music.map((p) => (
-                    <PlaylistCard key={p.id} p={p} t={t} audio={audio} onOpen={() => setDetail({ kind: "playlist", item: p })} />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <div className="flex flex-col gap-12">{rendered}</div>
 
       <Modal open={!!detail} onClose={() => setDetail(null)}>
           {detail && <DetailView d={detail} t={t} audio={audio} />}
@@ -264,6 +380,30 @@ function MediaCard({ m, t, onOpen }: { m: Media; t: Strings; onOpen: () => void 
       </div>
       <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-white">{m.title}</p>
       {m.progress_info && <p className="mt-0.5 truncate text-xs text-white/50">{m.progress_info}</p>}
+    </button>
+  );
+}
+
+/** One line per item: the "list" layout of games and anime/manga. */
+function ListRow({ image, title, sub, rating, status, kind, thumb, onOpen }: { image: string; title: string; sub: string; rating: string; status: ItemStatus; kind: StatusKind; thumb: string; onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} aria-label={title} className="group flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-2.5 text-left transition hover:border-white/15">
+      <div className={cn("relative flex-none overflow-hidden rounded-lg bg-black/40", thumb)}>
+        <Cover src={image} alt={title} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-white">{title}</p>
+        {sub && <p className="truncate text-xs text-white/55">{sub}</p>}
+      </div>
+      <div className="flex flex-none flex-col items-end gap-1 text-xs">
+        {rating && (
+          <span className="flex items-center gap-1 font-semibold text-white">
+            <Star className="size-3 fill-current text-amber-400" />
+            {rating}
+          </span>
+        )}
+        {status !== "owned" && <StatusLabel status={status} kind={kind} />}
+      </div>
     </button>
   );
 }
@@ -601,12 +741,19 @@ const CASE_GRID = {
   list: { grid: "grid gap-2", span: { small: "", medium: "", large: "" } },
 } as const;
 
-function CaseGrid({ c, items, t, onOpen }: { c: Case; items: CaseItem[]; t: Strings; onOpen: (i: CaseItem) => void }) {
+/** Density moves every tile one step down (compact) or up (large) the size scale. */
+function stepSize(size: string, density: BlockDensity): (typeof SIZE_STEPS)[number] {
+  const i = SIZE_STEPS.indexOf(size as (typeof SIZE_STEPS)[number]);
+  const shift = density === "compact" ? -1 : density === "large" ? 1 : 0;
+  return SIZE_STEPS[Math.min(2, Math.max(0, (i < 0 ? 1 : i) + shift))];
+}
+
+function CaseGrid({ c, density, items, t, onOpen }: { c: Case; density: BlockDensity; items: CaseItem[]; t: Strings; onOpen: (i: CaseItem) => void }) {
   const g = CASE_GRID[c.layout] ?? CASE_GRID.poster;
   return (
     <div className={g.grid}>
       {items.map((i) => (
-        <CaseItemCard key={i.id} item={i} layout={c.layout} aspect={c.aspect} className={g.span[i.size] ?? g.span.medium} t={t} onOpen={() => onOpen(i)} />
+        <CaseItemCard key={i.id} item={i} layout={c.layout} aspect={c.aspect} className={g.span[stepSize(i.size, density)]} t={t} onOpen={() => onOpen(i)} />
       ))}
     </div>
   );
@@ -649,7 +796,7 @@ function CaseItemCard({ item, layout, aspect, className, t, onOpen }: { item: Ca
             </span>
           )}
           {item.is_featured && <span className="rounded-md bg-brand px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">{t.featured}</span>}
-          {item.status !== "owned" && <StatusLabel status={item.status} />}
+          {item.status !== "owned" && <StatusLabel status={item.status} kind="case" />}
         </div>
       </button>
     );
@@ -725,8 +872,8 @@ function CaseItemDetail({ item, aspect, t }: { item: CaseItem; aspect: Case["asp
   );
 }
 
-function StatusLabel({ status }: { status: ItemStatus }) {
-  return <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white", STATUS_TONE[status])}>{statusLabel(status, "case")}</span>;
+function StatusLabel({ status, kind }: { status: ItemStatus; kind: StatusKind }) {
+  return <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white", STATUS_TONE[status])}>{statusLabel(status, kind)}</span>;
 }
 
 const STATUS_TONE: Record<ItemStatus, string> = {

@@ -12,7 +12,7 @@
 
 - **Profile card**: **animated avatar decorations** and **profile effects** (with importable packs), themes, fonts, name logos, badges, links, background video, soundtrack, entry screen, and a 3D tilt.
 - **Live presence**: Discord status and activity (via [Lanyard](https://github.com/Phineas/lanyard)), Spotify, YouTube Music, **Last.fm now playing**, and Steam.
-- **Display case**: games (Steam/SteamDB import), anime and manga (AniList import), playlists (Spotify/YouTube import), projects and referral codes, plus **custom cases** for your own categories (films, books, figures) with poster, wide or list layouts. You can hide each section on its own.
+- **Display case**: games (Steam/SteamDB import), anime and manga (AniList import), playlists (Spotify/YouTube import), projects and referral codes, plus **custom cases** for your own categories (films, books, figures) with poster, wide or list layouts. The vault page is a list of **blocks** you arrange in the dashboard: sections (with grid or list layout and card density), text, stats, a featured row and a recently added row. A section without a block is hidden.
 - **Short links**: your own link shortener. `your-domain/yt` redirects to any URL you save, and visits are counted.
 - **Dashboard**: live preview, media library, first-run setup, **two-factor login (TOTP)**, profile history, JSON export/restore, and daily backups.
 - **Small and private**: Go + SQLite, about 60 KB of JavaScript on the public page, no tracking, no external database.
@@ -60,7 +60,6 @@ For a real domain with HTTPS, see **[docs/install.md](docs/install.md)**. It has
 - Passkeys (WebAuthn) as a second factor.
 - More languages for the public page (English only today).
 - Multiple profiles on one install.
-- Widget system for vault and custom categories.
 
 Bug reports are welcome. Pull requests are not accepted for now; see [CONTRIBUTING.md](CONTRIBUTING.md).
 

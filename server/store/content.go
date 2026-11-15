@@ -70,7 +70,7 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 				return err
 			}
 		}
-		e.Profile.Settings.Sections = models.KeepCases(e.Profile.Settings.Sections, func(id int64) bool { return exist[id] })
+		e.Profile.Settings.PruneCases(func(id int64) bool { return exist[id] })
 		settings, err := json.Marshal(e.Profile.Settings)
 		if err != nil {
 			return err

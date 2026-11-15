@@ -66,6 +66,14 @@ cd web && npm run lint && npx tsc -b
 - `GET /api/v1/vault` returns `cases`: the cases listed in `Settings.Sections`, in that order, each with its `items`.
 - Export format version 2 adds `cases` (with items). A version 1 file has no `cases`, so a restore keeps the current cases (they stay hidden unless the file's sections list them).
 
+## Vault blocks
+
+- The vault page is `Settings.VaultBlocks`, a list rendered top to bottom (`models.VaultBlock`). Types: `section` (`section`, `layout`, `density`, `title`), `text` (`title`, plain `body`, max 2000 characters), `stats`, `featured`, `recent` (`count`, 1 to 24). The sticky top bar is not a block. At most 30 blocks; a section is in at most one block.
+- `Normalize` drops unknown types, bad section ids, repeats and extras, and stays pure. Case existence is checked on save, restore and case delete through `Settings.PruneCases`.
+- `Sections` stays for old clients and is rebuilt from the section blocks on every `Normalize`. A payload or stored settings with `vault_blocks` missing (nil) derive one default `section` block per `Sections` entry; an empty list is an empty page.
+- `featured` and `recent` are computed in the browser from the `/api/v1/vault` payload. There is no extra endpoint, and no migration.
+- The block editor is `web/src/admin/pages/VaultBlocks.tsx`. Keep dashboard code out of `web/src/vault`.
+
 ## Releasing
 
 Push a tag like `v1.2.0`. `.github/workflows/release.yml` publishes the multi-arch image to `ghcr.io/<owner>/onpresence` and attaches binaries to the GitHub release. The first time, make the package public under GitHub → Packages → onpresence → Package settings.
