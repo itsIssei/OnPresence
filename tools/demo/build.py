@@ -199,16 +199,16 @@ def content(avatar_url, banner_url, g, m, p, r):
     for i, b in enumerate(badges):
         b.update(category="", sort_order=i)
     games = [
-        {"title": "Starfall Drift", "subtitle": "Arcade racer", "cover_image": g["starfall"], "rating": "9.5/10", "badge": "Speedrun", "badge_type": "masterpiece", "hours_played": 412, "category": "Racing", "review_note": "The drift physics are perfect. My any% route is 18:42.", "is_featured": True},
-        {"title": "Hollow Lantern", "subtitle": "Metroidvania", "cover_image": g["lantern"], "rating": "9/10", "badge": "", "badge_type": "good", "hours_played": 96, "category": "Adventure", "review_note": "Moody pixel art that inspired half my portfolio.", "is_featured": False},
-        {"title": "Neon Courier", "subtitle": "Rhythm platformer", "cover_image": g["courier"], "rating": "8/10", "badge": "", "badge_type": "good", "hours_played": 58, "category": "Rhythm", "review_note": "", "is_featured": False},
-        {"title": "Tidebreaker", "subtitle": "Roguelike", "cover_image": g["tide"], "rating": "6/10", "badge": "", "badge_type": "okay", "hours_played": 21, "category": "Roguelike", "review_note": "Fun runs, grindy meta.", "is_featured": False},
+        {"title": "Starfall Drift", "subtitle": "Arcade racer", "cover_image": g["starfall"], "rating": "9.5/10", "badge": "Speedrun", "badge_type": "masterpiece", "hours_played": 412, "category": "Racing", "review_note": "The drift physics are perfect. My any% route is 18:42.", "status": "completed", "is_featured": True},
+        {"title": "Hollow Lantern", "subtitle": "Metroidvania", "cover_image": g["lantern"], "rating": "9/10", "badge": "", "badge_type": "good", "hours_played": 96, "category": "Adventure", "review_note": "Moody pixel art that inspired half my portfolio.", "status": "playing", "is_featured": False},
+        {"title": "Neon Courier", "subtitle": "Rhythm platformer", "cover_image": g["courier"], "rating": "8/10", "badge": "", "badge_type": "good", "hours_played": 0, "category": "Rhythm", "review_note": "", "status": "wishlist", "is_featured": False},
+        {"title": "Tidebreaker", "subtitle": "Roguelike", "cover_image": g["tide"], "rating": "6/10", "badge": "", "badge_type": "okay", "hours_played": 21, "category": "Roguelike", "review_note": "Fun runs, grindy meta.", "status": "dropped", "is_featured": False},
     ]
     media = [
-        {"title": "Moonlit Academy", "type": "anime", "cover_image": m["moonlit"], "rating": "10/10", "rank_badge": "#1", "category_badge": "Slice of life", "progress_info": "24/24 eps", "review_note": "Comfort show.", "tags": "school, fantasy", "is_featured": True},
-        {"title": "Iron Petal", "type": "anime", "cover_image": m["petal"], "rating": "8.5/10", "rank_badge": "", "category_badge": "Action", "progress_info": "12/12 eps", "review_note": "", "tags": "mecha", "is_featured": False},
-        {"title": "Clockwork Sky", "type": "manga", "cover_image": m["clockwork"], "rating": "9/10", "rank_badge": "", "category_badge": "Adventure", "progress_info": "Ch. 88", "review_note": "", "tags": "steampunk", "is_featured": False},
-        {"title": "Ember Road", "type": "manhwa", "cover_image": m["ember"], "rating": "8/10", "rank_badge": "", "category_badge": "Drama", "progress_info": "Ch. 120", "review_note": "", "tags": "", "is_featured": False},
+        {"title": "Moonlit Academy", "type": "anime", "cover_image": m["moonlit"], "rating": "10/10", "rank_badge": "#1", "category_badge": "Slice of life", "progress_info": "24/24 eps", "review_note": "Comfort show.", "tags": "school, fantasy", "status": "completed", "is_featured": True},
+        {"title": "Iron Petal", "type": "anime", "cover_image": m["petal"], "rating": "8.5/10", "rank_badge": "", "category_badge": "Action", "progress_info": "12/12 eps", "review_note": "", "tags": "mecha", "status": "owned", "is_featured": False},
+        {"title": "Clockwork Sky", "type": "manga", "cover_image": m["clockwork"], "rating": "9/10", "rank_badge": "", "category_badge": "Adventure", "progress_info": "Ch. 88", "review_note": "", "tags": "steampunk", "status": "playing", "is_featured": False},
+        {"title": "Ember Road", "type": "manhwa", "cover_image": m["ember"], "rating": "8/10", "rank_badge": "", "category_badge": "Drama", "progress_info": "Ch. 120", "review_note": "", "tags": "", "status": "wishlist", "is_featured": False},
     ]
     for x in media:
         x.update(anilist_id=0)

@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Clock, Copy, ExternalLink, Pause, Play, Search, Star } from "lucide-react";
 import { siSpotify, siYoutubemusic } from "simple-icons";
 import { BrandIcon } from "@/lib/icons";
-import { strings, type Strings } from "@/lib/i18n";
-import type { Game, Media, Playlist, PublicProfile, Referral, SectionId, Vault as VaultData } from "@/lib/types";
+import { statusLabel, strings, type StatusKind, type Strings } from "@/lib/i18n";
+import { ITEM_STATUSES, type Game, type ItemStatus, type Media, type Playlist, PublicProfile, Referral, SectionId, Vault as VaultData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { AudioController } from "@/site/audio";
 import { Modal, ModalDescription as DialogDescription, ModalTitle as DialogTitle } from "./Modal";
@@ -22,6 +22,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
   const t = strings;
   const [filter, setFilter] = useState<SectionId | "all">("all");
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Partial<Record<SectionId, ItemStatus>>>({});
   const [detail, setDetail] = useState<Detail | null>(null);
 
   const q = query.trim().toLowerCase();
@@ -106,23 +107,46 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
         {visible.map((id) => {
           const items = data[id];
           if (!items.length) return null;
+          const kind = id === "games" ? "game" : id === "anime" || id === "manga" ? id : null;
+          const all: { status: ItemStatus }[] = id === "games" || id === "anime" || id === "manga" ? vault[id] : [];
+          const present = ITEM_STATUSES.filter((st) => all.some((x) => x.status === st));
+          const active = statusFilter[id] && present.includes(statusFilter[id]) ? statusFilter[id] : undefined;
+          const byStatus = <T extends { status: ItemStatus }>(list: T[]) => (active ? list.filter((x) => x.status === active) : list);
           return (
             <div key={id}>
               <h3 className="mb-4 flex items-center gap-2 font-display text-base font-bold uppercase tracking-[0.12em] text-white/90">
                 <span className="size-2 rounded-full bg-brand shadow-[0_0_10px_var(--brand)]" />
                 {labels[id]}
               </h3>
+              {kind && present.length > 1 && (
+                <div className="-mt-1 mb-4 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="group" aria-label={labels[id]}>
+                  {([undefined, ...present] as const).map((st) => (
+                    <button
+                      key={st ?? "all"}
+                      type="button"
+                      onClick={() => setStatusFilter((prev) => ({ ...prev, [id]: st }))}
+                      aria-pressed={active === st}
+                      className={cn(
+                        "flex-none rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                        active === st ? "bg-white/15 text-white" : "bg-white/5 text-white/55 hover:bg-white/10 hover:text-white",
+                      )}
+                    >
+                      {st ? statusLabel(st, kind) : t.all}
+                    </button>
+                  ))}
+                </div>
+              )}
               {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => setDetail({ kind: "entry", item })} />}
               {id === "games" && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {data.games.map((g) => (
+                  {byStatus(data.games).map((g) => (
                     <GameCard key={g.id} g={g} t={t} onOpen={() => setDetail({ kind: "game", item: g })} />
                   ))}
                 </div>
               )}
               {(id === "anime" || id === "manga") && (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {data[id].map((m) => (
+                  {byStatus(data[id]).map((m) => (
                     <MediaCard key={m.id} m={m} t={t} onOpen={() => setDetail({ kind: "media", item: m })} />
                   ))}
                 </div>
@@ -184,6 +208,7 @@ function GameCard({ g, t, onOpen }: { g: Game; t: Strings; onOpen: () => void })
             {g.rating}
           </span>
         )}
+        <StatusStrip status={g.status} kind="game" />
       </div>
       <div className="p-3.5">
         <p className="truncate font-semibold text-white">{g.title}</p>
@@ -214,6 +239,7 @@ function MediaCard({ m, t, onOpen }: { m: Media; t: Strings; onOpen: () => void 
             {m.rating}
           </span>
         )}
+        <StatusStrip status={m.status} kind={mediaKind(m)} />
       </div>
       <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-white">{m.title}</p>
       {m.progress_info && <p className="mt-0.5 truncate text-xs text-white/50">{m.progress_info}</p>}
@@ -445,6 +471,7 @@ function DetailView({ d, t, audio }: { d: Detail; t: Strings; audio: AudioContro
             {g.badge && <Chip>{g.badge}</Chip>}
             {g.hours_played > 0 && <Chip>{g.hours_played} {t.hours}</Chip>}
             <Chip>{BADGE_TYPE_LABEL[g.badge_type]}</Chip>
+            {g.status !== "owned" && <Chip>{statusLabel(g.status, "game")}</Chip>}
           </div>
           {g.review_note && <p className="whitespace-pre-line text-sm leading-relaxed text-white/80">{g.review_note}</p>}
         </div>
@@ -467,6 +494,7 @@ function DetailView({ d, t, audio }: { d: Detail; t: Strings; audio: AudioContro
             {m.rating && <Chip>★ {m.rating}</Chip>}
             {m.rank_badge && <Chip>{m.rank_badge}</Chip>}
             {m.category_badge && <Chip>{m.category_badge}</Chip>}
+            {m.status !== "owned" && <Chip>{statusLabel(m.status, mediaKind(m))}</Chip>}
           </div>
           {m.tags && <p className="text-xs text-white/45">{m.tags}</p>}
           {m.review_note && <p className="whitespace-pre-line pt-1 text-sm leading-relaxed text-white/80">{m.review_note}</p>}
@@ -527,6 +555,25 @@ function DetailView({ d, t, audio }: { d: Detail; t: Strings; audio: AudioContro
         </ol>
       )}
     </div>
+  );
+}
+
+function mediaKind(m: Media): StatusKind {
+  return m.type === "anime" ? "anime" : "manga";
+}
+
+/** Small corner label. Hidden for the default "owned" status. */
+function StatusStrip({ status, kind }: { status: ItemStatus; kind: StatusKind }) {
+  if (status === "owned") return null;
+  return (
+    <span
+      className={cn(
+        "absolute bottom-2 right-2 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur",
+        status === "wishlist" ? "bg-violet-500/80" : status === "playing" ? "bg-sky-500/80" : status === "completed" ? "bg-emerald-600/80" : "bg-black/65 text-white/75",
+      )}
+    >
+      {statusLabel(status, kind)}
+    </span>
   );
 }
 

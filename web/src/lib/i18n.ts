@@ -1,3 +1,5 @@
+import type { ItemStatus } from "./types";
+
 /** UI labels shown to visitors. */
 export const strings = {
   enter: "click to enter",
@@ -30,5 +32,22 @@ export const strings = {
   playing: "Now playing",
   details: "Details",
 };
+
+export type StatusKind = "game" | "anime" | "manga" | "case";
+
+const STATUS_LABELS: Record<ItemStatus, string> = {
+  owned: "Owned",
+  playing: "Playing",
+  completed: "Completed",
+  dropped: "Dropped",
+  wishlist: "Wishlist",
+};
+
+/** Status label for a section. The value stays the same; the wording changes. */
+export function statusLabel(status: ItemStatus, kind: StatusKind): string {
+  if (status === "playing") return kind === "anime" ? "Watching" : kind === "manga" ? "Reading" : kind === "case" ? "In progress" : "Playing";
+  if (status === "owned" && kind !== "game") return kind === "case" ? "Owned" : "In collection";
+  return STATUS_LABELS[status];
+}
 
 export type Strings = typeof strings;

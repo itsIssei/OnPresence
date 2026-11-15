@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, type AniListResult, type GameSearchResult } from "@/lib/api";
-import type { Game, Media, Playlist, Referral, SectionId, Track } from "@/lib/types";
+import { statusLabel, type StatusKind } from "@/lib/i18n";
+import { ITEM_STATUSES, type Game, type ItemStatus, type Media, Playlist, Referral, SectionId, Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDraft } from "../draft";
 import { CollectionManager, type FieldDef } from "../Collection";
@@ -205,6 +206,8 @@ function ResultButton({ image, title, subtitle, onClick, portrait }: { image: st
   );
 }
 
+const statusOptions = (kind: StatusKind) => Object.fromEntries(ITEM_STATUSES.map((st: ItemStatus) => [st, statusLabel(st, kind)]));
+
 // ---------------------------------------------------------------- games
 
 const gameFields: FieldDef<Game>[] = [
@@ -213,6 +216,7 @@ const gameFields: FieldDef<Game>[] = [
   { key: "cover_image", label: "Cover (landscape)", type: "image" },
   { key: "rating", label: "Rating", type: "rating" },
   { key: "badge_type", label: "Verdict", type: "select", options: { masterpiece: "Masterpiece", good: "Good", okay: "Okay", trash: "Trash" } },
+  { key: "status", label: "Status", type: "select", options: statusOptions("game") },
   { key: "category", label: "Genre", type: "text", maxLength: 40 },
   { key: "hours_played", label: "Hours played", type: "number" },
   { key: "badge", label: "Extra tag", type: "text", maxLength: 40, hint: "e.g. 100% achievements" },
@@ -226,7 +230,7 @@ function GamesManager() {
       collection="games"
       noun="Game"
       fields={gameFields}
-      defaults={{ title: "", badge_type: "good", hours_played: 0, is_featured: false }}
+      defaults={{ title: "", badge_type: "good", status: "owned", hours_played: 0, is_featured: false }}
       importer={(apply) => (
         <ImportSearch<GameSearchResult>
           placeholder="Search Steam, or paste a Steam store / SteamDB link or app id"
@@ -333,6 +337,7 @@ const mediaFields = (kind: "anime" | "manga"): FieldDef<Media>[] => [
     : { key: "type", label: "Type", type: "select", options: { manga: "Manga", manhwa: "Manhwa" } },
   { key: "cover_image", label: "Cover (portrait)", type: "image" },
   { key: "rating", label: "Rating", type: "rating" },
+  { key: "status", label: "Status", type: "select", options: statusOptions(kind) },
   { key: "progress_info", label: "Progress", type: "text", maxLength: 120, hint: kind === "anime" ? "e.g. Seasons 1–4 done" : "e.g. Chapter 271" },
   { key: "rank_badge", label: "Rank tag", type: "text", maxLength: 40 },
   { key: "category_badge", label: "Category tag", type: "text", maxLength: 60 },
@@ -350,7 +355,7 @@ function MediaManager({ kind }: { kind: "anime" | "manga" }) {
       noun={kind === "anime" ? "Anime" : "Manga"}
       fields={mediaFields(kind)}
       filter={(m) => (kind === "anime" ? m.type === "anime" : m.type !== "anime")}
-      defaults={{ title: "", type: kind, is_featured: false, anilist_id: 0 }}
+      defaults={{ title: "", type: kind, status: "owned", is_featured: false, anilist_id: 0 }}
       importer={(apply) => (
         <ImportSearch<AniListResult>
           placeholder="Search AniList…"

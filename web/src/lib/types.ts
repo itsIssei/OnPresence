@@ -118,6 +118,9 @@ export interface PublicProfile extends Profile {
 
 export type GameBadgeType = "trash" | "okay" | "good" | "masterpiece";
 
+export const ITEM_STATUSES = ["owned", "playing", "completed", "dropped", "wishlist"] as const;
+export type ItemStatus = (typeof ITEM_STATUSES)[number];
+
 export interface Game {
   id: number;
   title: string;
@@ -131,6 +134,7 @@ export interface Game {
   review_note: string;
   is_featured: boolean;
   sort_order: number;
+  status: ItemStatus;
   created_at: string;
 }
 
@@ -150,6 +154,7 @@ export interface Media {
   tags: string;
   is_featured: boolean;
   sort_order: number;
+  status: ItemStatus;
   created_at: string;
 }
 

@@ -32,6 +32,8 @@ var migrations = []migration{
 		sort_order INTEGER NOT NULL DEFAULT 0,
 		created_at TEXT NOT NULL DEFAULT ''
 	)`)},
+	{6, "item status", execSQL(`ALTER TABLE games ADD COLUMN status TEXT NOT NULL DEFAULT 'owned';
+		ALTER TABLE media ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'`)},
 }
 
 func execSQL(q string) func(context.Context, *sql.Tx) error {

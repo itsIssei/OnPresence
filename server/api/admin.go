@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -381,6 +382,17 @@ func validateBadge(v validationError, x *models.Badge) {
 	}
 }
 
+// itemStatus defaults an empty status to "owned" and rejects unknown values.
+func itemStatus(v validationError, s *string) {
+	*s = strings.ToLower(strings.TrimSpace(*s))
+	if *s == "" {
+		*s = "owned"
+	}
+	if !slices.Contains(models.ItemStatuses, *s) {
+		v.add("status", "Unknown status")
+	}
+}
+
 func validateGame(v validationError, x *models.Game) {
 	text(v, "title", &x.Title, 1, 120)
 	text(v, "subtitle", &x.Subtitle, 0, 120)
@@ -390,6 +402,7 @@ func validateGame(v validationError, x *models.Game) {
 	text(v, "review_note", &x.ReviewNote, 0, 2000)
 	safeURL(v, "cover_image", x.CoverImage)
 	x.BadgeType = models.OneOf(strings.ToLower(x.BadgeType), models.GameBadgeTypes, "good")
+	itemStatus(v, &x.Status)
 	if x.HoursPlayed < 0 || x.HoursPlayed > 1_000_000 {
 		v.add("hours_played", "Out of range")
 	}
@@ -408,6 +421,7 @@ func validateMedia(v validationError, x *models.Media) {
 	if x.Type == "" {
 		v.add("type", "Choose anime, manga or manhwa")
 	}
+	itemStatus(v, &x.Status)
 }
 
 func validatePlaylist(v validationError, x *models.Playlist) {

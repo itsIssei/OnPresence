@@ -214,8 +214,12 @@ type Game struct {
 	ReviewNote  string `json:"review_note"`
 	IsFeatured  bool   `json:"is_featured"`
 	SortOrder   int    `json:"sort_order"`
+	Status      string `json:"status"` // see ItemStatuses
 	CreatedAt   string `json:"created_at"`
 }
+
+// ItemStatuses are the allowed values of Game.Status and Media.Status.
+var ItemStatuses = []string{"owned", "playing", "completed", "dropped", "wishlist"}
 
 var GameBadgeTypes = []string{"trash", "okay", "good", "masterpiece"}
 
@@ -234,6 +238,7 @@ type Media struct {
 	Tags          string `json:"tags"`
 	IsFeatured    bool   `json:"is_featured"`
 	SortOrder     int    `json:"sort_order"`
+	Status        string `json:"status"` // see ItemStatuses
 	CreatedAt     string `json:"created_at"`
 }
 

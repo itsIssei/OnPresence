@@ -97,14 +97,14 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 			}
 		}
 		for _, x := range e.Games {
-			if _, err := ins(`INSERT INTO games (id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				x.ID, x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder, orNow(x.CreatedAt)); err != nil {
+			if _, err := ins(`INSERT INTO games (id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder, statusOrOwned(x.Status), orNow(x.CreatedAt)); err != nil {
 				return err
 			}
 		}
 		for _, x := range e.Media {
-			if _, err := ins(`INSERT INTO media (id, title, type, cover_image, rating, rank_badge, category_badge, progress_info, review_note, anilist_id, tags, is_featured, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				x.ID, x.Title, x.Type, x.CoverImage, x.Rating, x.RankBadge, x.CategoryBadge, x.ProgressInfo, x.ReviewNote, x.AniListID, x.Tags, b2i(x.IsFeatured), x.SortOrder, orNow(x.CreatedAt)); err != nil {
+			if _, err := ins(`INSERT INTO media (id, title, type, cover_image, rating, rank_badge, category_badge, progress_info, review_note, anilist_id, tags, is_featured, sort_order, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Title, x.Type, x.CoverImage, x.Rating, x.RankBadge, x.CategoryBadge, x.ProgressInfo, x.ReviewNote, x.AniListID, x.Tags, b2i(x.IsFeatured), x.SortOrder, statusOrOwned(x.Status), orNow(x.CreatedAt)); err != nil {
 				return err
 			}
 		}
@@ -142,4 +142,12 @@ func orNow(t string) string {
 		return now()
 	}
 	return t
+}
+
+// statusOrOwned maps a missing status (v1 exports) to the default.
+func statusOrOwned(s string) string {
+	if s == "" {
+		return "owned"
+	}
+	return s
 }

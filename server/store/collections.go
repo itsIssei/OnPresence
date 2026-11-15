@@ -169,7 +169,7 @@ func (s *Store) SaveBadge(ctx context.Context, x *models.Badge) error {
 // ---------------------------------------------------------------- games
 
 func (s *Store) Games(ctx context.Context) ([]models.Game, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, created_at
+	rows, err := s.DB.QueryContext(ctx, `SELECT id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, created_at
 		FROM games ORDER BY is_featured DESC, sort_order, id DESC`)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (s *Store) Games(ctx context.Context) ([]models.Game, error) {
 	out := []models.Game{}
 	for rows.Next() {
 		var x models.Game
-		if err := rows.Scan(&x.ID, &x.Title, &x.Subtitle, &x.CoverImage, &x.Rating, &x.Badge, &x.BadgeType, &x.HoursPlayed, &x.Category, &x.ReviewNote, &x.IsFeatured, &x.SortOrder, &x.CreatedAt); err != nil {
+		if err := rows.Scan(&x.ID, &x.Title, &x.Subtitle, &x.CoverImage, &x.Rating, &x.Badge, &x.BadgeType, &x.HoursPlayed, &x.Category, &x.ReviewNote, &x.IsFeatured, &x.SortOrder, &x.Status, &x.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, x)
@@ -191,9 +191,9 @@ func (s *Store) SaveGame(ctx context.Context, x *models.Game) error {
 		x.CreatedAt = now()
 	}
 	id, err := s.upsert(ctx, x.ID,
-		`UPDATE games SET title=?, subtitle=?, cover_image=?, rating=?, badge=?, badge_type=?, hours_played=?, category=?, review_note=?, is_featured=?, sort_order=? WHERE id=?`,
-		`INSERT INTO games (title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
-		x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder)
+		`UPDATE games SET title=?, subtitle=?, cover_image=?, rating=?, badge=?, badge_type=?, hours_played=?, category=?, review_note=?, is_featured=?, sort_order=?, status=? WHERE id=?`,
+		`INSERT INTO games (title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
+		x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder, x.Status)
 	x.ID = id
 	return err
 }
@@ -201,7 +201,7 @@ func (s *Store) SaveGame(ctx context.Context, x *models.Game) error {
 // ---------------------------------------------------------------- media (anime / manga / manhwa)
 
 func (s *Store) Media(ctx context.Context) ([]models.Media, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id, title, type, cover_image, rating, rank_badge, category_badge, progress_info, review_note, anilist_id, tags, is_featured, sort_order, created_at
+	rows, err := s.DB.QueryContext(ctx, `SELECT id, title, type, cover_image, rating, rank_badge, category_badge, progress_info, review_note, anilist_id, tags, is_featured, sort_order, status, created_at
 		FROM media ORDER BY is_featured DESC, sort_order, id DESC`)
 	if err != nil {
 		return nil, err
@@ -210,7 +210,7 @@ func (s *Store) Media(ctx context.Context) ([]models.Media, error) {
 	out := []models.Media{}
 	for rows.Next() {
 		var x models.Media
-		if err := rows.Scan(&x.ID, &x.Title, &x.Type, &x.CoverImage, &x.Rating, &x.RankBadge, &x.CategoryBadge, &x.ProgressInfo, &x.ReviewNote, &x.AniListID, &x.Tags, &x.IsFeatured, &x.SortOrder, &x.CreatedAt); err != nil {
+		if err := rows.Scan(&x.ID, &x.Title, &x.Type, &x.CoverImage, &x.Rating, &x.RankBadge, &x.CategoryBadge, &x.ProgressInfo, &x.ReviewNote, &x.AniListID, &x.Tags, &x.IsFeatured, &x.SortOrder, &x.Status, &x.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, x)
@@ -223,9 +223,9 @@ func (s *Store) SaveMedia(ctx context.Context, x *models.Media) error {
 		x.CreatedAt = now()
 	}
 	id, err := s.upsert(ctx, x.ID,
-		`UPDATE media SET title=?, type=?, cover_image=?, rating=?, rank_badge=?, category_badge=?, progress_info=?, review_note=?, anilist_id=?, tags=?, is_featured=?, sort_order=? WHERE id=?`,
-		`INSERT INTO media (title, type, cover_image, rating, rank_badge, category_badge, progress_info, review_note, anilist_id, tags, is_featured, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
-		x.Title, x.Type, x.CoverImage, x.Rating, x.RankBadge, x.CategoryBadge, x.ProgressInfo, x.ReviewNote, x.AniListID, x.Tags, b2i(x.IsFeatured), x.SortOrder)
+		`UPDATE media SET title=?, type=?, cover_image=?, rating=?, rank_badge=?, category_badge=?, progress_info=?, review_note=?, anilist_id=?, tags=?, is_featured=?, sort_order=?, status=? WHERE id=?`,
+		`INSERT INTO media (title, type, cover_image, rating, rank_badge, category_badge, progress_info, review_note, anilist_id, tags, is_featured, sort_order, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
+		x.Title, x.Type, x.CoverImage, x.Rating, x.RankBadge, x.CategoryBadge, x.ProgressInfo, x.ReviewNote, x.AniListID, x.Tags, b2i(x.IsFeatured), x.SortOrder, x.Status)
 	x.ID = id
 	return err
 }

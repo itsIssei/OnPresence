@@ -661,3 +661,60 @@ func TestShortLinksExportRestore(t *testing.T) {
 		t.Fatalf("after id dedupe: %d", res.StatusCode)
 	}
 }
+
+func TestItemStatus(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	// Missing status defaults to owned; a bad one is rejected.
+	res, body := e.do("POST", "/api/v1/admin/games", map[string]any{"title": "Plain"})
+	if res.StatusCode != 201 || !strings.Contains(body, `"status":"owned"`) {
+		t.Fatalf("default status: %d %s", res.StatusCode, body)
+	}
+	if res, _ := e.do("POST", "/api/v1/admin/games", map[string]any{"title": "Bad", "status": "foo"}); res.StatusCode != 400 {
+		t.Fatalf("bad game status: %d", res.StatusCode)
+	}
+	if res, _ := e.do("POST", "/api/v1/admin/media", map[string]any{"title": "Bad", "type": "anime", "status": "foo"}); res.StatusCode != 400 {
+		t.Fatalf("bad media status: %d", res.StatusCode)
+	}
+	if res, _ := e.do("PUT", "/api/v1/admin/games/1", map[string]any{"title": "Plain", "status": "foo"}); res.StatusCode != 400 {
+		t.Fatalf("bad PUT status: %d", res.StatusCode)
+	}
+	e.do("POST", "/api/v1/admin/games", map[string]any{"title": "Want", "status": "wishlist"})
+	res, body = e.do("POST", "/api/v1/admin/media", map[string]any{"title": "Show", "type": "anime", "status": "playing"})
+	if res.StatusCode != 201 || !strings.Contains(body, `"status":"playing"`) {
+		t.Fatalf("media status: %d %s", res.StatusCode, body)
+	}
+	if _, v := e.do("GET", "/api/v1/vault", nil); !strings.Contains(v, `"status":"wishlist"`) {
+		t.Fatalf("vault lacks status: %s", v)
+	}
+	// Export and restore keep the status.
+	_, exp := e.do("GET", "/api/v1/admin/export", nil)
+	var data map[string]any
+	json.Unmarshal([]byte(exp), &data)
+	if res, body := e.do("POST", "/api/v1/admin/restore", data); res.StatusCode != 200 {
+		t.Fatalf("restore: %d %s", res.StatusCode, body)
+	}
+	_, games := e.do("GET", "/api/v1/admin/games", nil)
+	_, anime := e.do("GET", "/api/v1/admin/media", nil)
+	if !strings.Contains(games, `"status":"wishlist"`) || !strings.Contains(anime, `"status":"playing"`) {
+		t.Fatalf("after restore: %s %s", games, anime)
+	}
+}
+
+func TestItemStatusOldExport(t *testing.T) {
+	e := newEnv(t)
+	e.login()
+	_, exp := e.do("GET", "/api/v1/admin/export", nil)
+	var data map[string]any
+	json.Unmarshal([]byte(exp), &data)
+	// An old export without the field restores as owned.
+	data["games"] = []map[string]any{{"id": 1, "title": "Old"}}
+	data["media"] = []map[string]any{{"id": 1, "title": "OldShow", "type": "manga"}}
+	if res, body := e.do("POST", "/api/v1/admin/restore", data); res.StatusCode != 200 {
+		t.Fatalf("old restore: %d %s", res.StatusCode, body)
+	}
+	_, games := e.do("GET", "/api/v1/admin/games", nil)
+	if !strings.Contains(games, `"status":"owned"`) {
+		t.Fatalf("old export status: %s", games)
+	}
+}

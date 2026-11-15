@@ -170,6 +170,7 @@
       "hours_played": 412,
       "category": "Racing",
       "review_note": "The drift physics are perfect. My any% route is 18:42.",
+      "status": "completed",
       "is_featured": true,
       "sort_order": 0
     },
@@ -183,6 +184,7 @@
       "hours_played": 96,
       "category": "Adventure",
       "review_note": "Moody pixel art that inspired half my portfolio.",
+      "status": "playing",
       "is_featured": false,
       "sort_order": 1
     },
@@ -193,9 +195,10 @@
       "rating": "8/10",
       "badge": "",
       "badge_type": "good",
-      "hours_played": 58,
+      "hours_played": 0,
       "category": "Rhythm",
       "review_note": "",
+      "status": "wishlist",
       "is_featured": false,
       "sort_order": 2
     },
@@ -209,6 +212,7 @@
       "hours_played": 21,
       "category": "Roguelike",
       "review_note": "Fun runs, grindy meta.",
+      "status": "dropped",
       "is_featured": false,
       "sort_order": 3
     }
@@ -224,6 +228,7 @@
       "progress_info": "24/24 eps",
       "review_note": "Comfort show.",
       "tags": "school, fantasy",
+      "status": "completed",
       "is_featured": true,
       "anilist_id": 0,
       "sort_order": 0
@@ -238,6 +243,7 @@
       "progress_info": "12/12 eps",
       "review_note": "",
       "tags": "mecha",
+      "status": "owned",
       "is_featured": false,
       "anilist_id": 0,
       "sort_order": 1
@@ -252,6 +258,7 @@
       "progress_info": "Ch. 88",
       "review_note": "",
       "tags": "steampunk",
+      "status": "playing",
       "is_featured": false,
       "anilist_id": 0,
       "sort_order": 2
@@ -266,6 +273,7 @@
       "progress_info": "Ch. 120",
       "review_note": "",
       "tags": "",
+      "status": "wishlist",
       "is_featured": false,
       "anilist_id": 0,
       "sort_order": 3
