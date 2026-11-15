@@ -6,7 +6,15 @@ export type BackgroundFX = "none" | "embers" | "lightning" | "magic-circle" | "a
 export type AvatarShape = "circle" | "rounded" | "square";
 export type NameStyle = "plain" | "glow" | "gradient";
 export type MusicMode = "auto" | "spotify" | "ytmusic" | "lastfm" | "custom" | "off";
-export type SectionId = "referrals" | "games" | "anime" | "manga" | "music";
+export type FixedSectionId = "referrals" | "games" | "anime" | "manga" | "music";
+/** A visible vault section: a fixed one, or "case:<id>" for a custom case. */
+export type SectionId = FixedSectionId | `case:${number}`;
+
+/** The case id of a "case:<id>" section id, or null. */
+export function caseSectionId(id: string): number | null {
+  const m = /^case:([1-9]\d*)$/.exec(id);
+  return m ? Number(m[1]) : null;
+}
 export type FontId = "sora" | "inter" | "mono" | "cinzel" | "orbitron" | "gothic" | "pirata" | "creepster";
 export type DiscordStatus = "auto" | "online" | "idle" | "dnd" | "offline";
 
@@ -216,8 +224,45 @@ export interface ShortLink {
   created_at: string;
 }
 
+export type ItemSize = "small" | "medium" | "large";
+export type CaseLayout = "poster" | "wide" | "list";
+export type CaseAspect = "2:3" | "1:1" | "16:9";
+
+export interface CaseItem {
+  id: number;
+  case_id: number;
+  title: string;
+  subtitle: string;
+  image: string;
+  rating: string;
+  status: ItemStatus;
+  /** Comma separated. */
+  tags: string;
+  /** Plain text. */
+  note: string;
+  link: string;
+  size: ItemSize;
+  is_featured: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+/** A custom display case. Visible when "case:<id>" is in settings.sections. */
+export interface Case {
+  id: number;
+  name: string;
+  /** Same forms as Badge.icon. */
+  icon: string;
+  layout: CaseLayout;
+  aspect: CaseAspect;
+  sort_order: number;
+  created_at: string;
+  items: CaseItem[];
+}
+
 export interface Vault {
   stats: { games: number; anime: number; manga: number; playlists: number };
+  cases: Case[];
   referrals: Referral[];
   games: Game[];
   anime: Media[];

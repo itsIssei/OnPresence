@@ -1,6 +1,8 @@
 import type {
   AdminProfile,
   Badge,
+  Case,
+  CaseItem,
   Me,
   Game,
   Media,
@@ -57,7 +59,7 @@ function safeJSON(text: string): unknown {
 
 const get = <T,>(p: string) => request<T>("GET", p);
 
-export type CollectionName = "links" | "badges" | "games" | "media" | "playlists" | "referrals" | "shortlinks";
+export type CollectionName = "links" | "badges" | "games" | "media" | "playlists" | "referrals" | "shortlinks" | "cases" | "caseitems";
 
 export interface CollectionTypes {
   links: SocialLink;
@@ -67,6 +69,8 @@ export interface CollectionTypes {
   playlists: Playlist;
   referrals: Referral;
   shortlinks: ShortLink;
+  cases: Case;
+  caseitems: CaseItem;
 }
 
 export const api = {

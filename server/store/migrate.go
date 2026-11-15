@@ -34,6 +34,32 @@ var migrations = []migration{
 	)`)},
 	{6, "item status", execSQL(`ALTER TABLE games ADD COLUMN status TEXT NOT NULL DEFAULT 'owned';
 		ALTER TABLE media ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'`)},
+	{7, "custom display cases", execSQL(`CREATE TABLE cases (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL DEFAULT '',
+		icon TEXT NOT NULL DEFAULT '',
+		layout TEXT NOT NULL DEFAULT 'poster',
+		aspect TEXT NOT NULL DEFAULT '2:3',
+		sort_order INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL DEFAULT ''
+	);
+	CREATE TABLE case_items (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		case_id INTEGER NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+		title TEXT NOT NULL DEFAULT '',
+		subtitle TEXT NOT NULL DEFAULT '',
+		image TEXT NOT NULL DEFAULT '',
+		rating TEXT NOT NULL DEFAULT '',
+		status TEXT NOT NULL DEFAULT 'owned',
+		tags TEXT NOT NULL DEFAULT '',
+		note TEXT NOT NULL DEFAULT '',
+		link TEXT NOT NULL DEFAULT '',
+		size TEXT NOT NULL DEFAULT 'medium',
+		is_featured INTEGER NOT NULL DEFAULT 0,
+		sort_order INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX idx_case_items_case ON case_items(case_id, sort_order)`)},
 }
 
 func execSQL(q string) func(context.Context, *sql.Tx) error {

@@ -1,6 +1,6 @@
 {
   "app": "onpresence",
-  "version": 1,
+  "version": 2,
   "profile": {
     "name": "Nova",
     "handle": "@nova.pixels",
@@ -55,7 +55,8 @@
         "games",
         "anime",
         "manga",
-        "music"
+        "music",
+        "case:1"
       ]
     }
   },
@@ -376,6 +377,93 @@
       "display_style": "card",
       "is_active": true,
       "sort_order": 2
+    }
+  ],
+  "cases": [
+    {
+      "id": 1,
+      "name": "Films",
+      "icon": "star",
+      "layout": "poster",
+      "aspect": "2:3",
+      "sort_order": 0,
+      "items": [
+        {
+          "title": "Afterglow",
+          "subtitle": "Drama, 2021",
+          "image": "/img/demo/film-afterglow.svg",
+          "rating": "9/10",
+          "status": "completed",
+          "tags": "neon, drama",
+          "note": "Every frame could be a pixel art reference.",
+          "link": "",
+          "size": "medium",
+          "is_featured": true,
+          "sort_order": 0,
+          "id": 1,
+          "case_id": 1
+        },
+        {
+          "title": "Paper Lanterns",
+          "subtitle": "Fantasy, 2019",
+          "image": "/img/demo/film-paper-lanterns.svg",
+          "rating": "8.5/10",
+          "status": "completed",
+          "tags": "fantasy",
+          "note": "",
+          "link": "",
+          "size": "medium",
+          "is_featured": false,
+          "sort_order": 1,
+          "id": 2,
+          "case_id": 1
+        },
+        {
+          "title": "The Last Signal",
+          "subtitle": "Sci-fi, 2023",
+          "image": "/img/demo/film-last-signal.svg",
+          "rating": "8/10",
+          "status": "playing",
+          "tags": "sci-fi, mystery",
+          "note": "Halfway through, no spoilers please.",
+          "link": "https://example.com",
+          "size": "medium",
+          "is_featured": false,
+          "sort_order": 2,
+          "id": 3,
+          "case_id": 1
+        },
+        {
+          "title": "Velvet Hour",
+          "subtitle": "Thriller, 2022",
+          "image": "/img/demo/film-velvet-hour.svg",
+          "rating": "",
+          "status": "wishlist",
+          "tags": "thriller",
+          "note": "",
+          "link": "",
+          "size": "medium",
+          "is_featured": false,
+          "sort_order": 3,
+          "id": 4,
+          "case_id": 1
+        },
+        {
+          "title": "Quiet Drift",
+          "subtitle": "Documentary, 2018",
+          "image": "/img/demo/film-quiet-drift.svg",
+          "rating": "7/10",
+          "status": "dropped",
+          "tags": "documentary",
+          "note": "Beautiful, but too slow for me.",
+          "link": "",
+          "size": "medium",
+          "is_featured": false,
+          "sort_order": 4,
+          "id": 5,
+          "case_id": 1
+        }
+      ]
     }
   ]
 }

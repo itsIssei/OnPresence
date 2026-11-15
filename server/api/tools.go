@@ -212,7 +212,11 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	const maxItems = 2000
-	if len(e.Links)+len(e.Badges)+len(e.Games)+len(e.Media)+len(e.Playlists)+len(e.Referrals)+len(e.ShortLinks) > maxItems {
+	total := len(e.Links) + len(e.Badges) + len(e.Games) + len(e.Media) + len(e.Playlists) + len(e.Referrals) + len(e.ShortLinks) + len(e.Cases)
+	for _, c := range e.Cases {
+		total += len(c.Items)
+	}
+	if total > maxItems {
 		writeError(w, http.StatusBadRequest, "Too many items in the file")
 		return
 	}
@@ -243,6 +247,19 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 	for i := range e.Referrals {
 		check("referrals", i, func(iv validationError) { validateReferral(iv, &e.Referrals[i]) })
 	}
+	for i := range e.Cases {
+		check("cases", i, func(iv validationError) {
+			c := &e.Cases[i]
+			validateCase(iv, c)
+			for j := range c.Items {
+				ij := validationError{}
+				validateCaseItem(ij, &c.Items[j])
+				for f, msg := range ij {
+					iv.add(fmt.Sprintf("items[%d].%s", j, f), msg)
+				}
+			}
+		})
+	}
 	slugs := map[string]bool{}
 	for i := range e.ShortLinks {
 		check("short_links", i, func(iv validationError) {
@@ -266,6 +283,8 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 	dedupeIDs(e.Media, func(x *models.Media) *int64 { return &x.ID })
 	dedupeIDs(e.Playlists, func(x *models.Playlist) *int64 { return &x.ID })
 	dedupeIDs(e.Referrals, func(x *models.Referral) *int64 { return &x.ID })
+	dedupeIDs(e.Cases, func(x *models.Case) *int64 { return &x.ID })
+	dedupeCaseItemIDs(e.Cases)
 	dedupeIDs(e.ShortLinks, func(x *models.ShortLink) *int64 { return &x.ID })
 
 	keep := max(s.cfg.BackupKeep, 7)
@@ -290,6 +309,21 @@ func dedupeIDs[T any](items []T, id func(*T) *int64) {
 			continue
 		}
 		seen[*p] = true
+	}
+}
+
+// dedupeCaseItemIDs does dedupeIDs across the items of all cases.
+func dedupeCaseItemIDs(cases []models.Case) {
+	seen := map[int64]bool{}
+	for i := range cases {
+		for j := range cases[i].Items {
+			p := &cases[i].Items[j].ID
+			if *p <= 0 || seen[*p] {
+				*p = 0
+				continue
+			}
+			seen[*p] = true
+		}
 	}
 }
 

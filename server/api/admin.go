@@ -52,6 +52,14 @@ func (s *Server) putAdminProfile(w http.ResponseWriter, r *http.Request) {
 	if v.respond(w) {
 		return
 	}
+	// A section entry for a case that does not exist (deleted, or from an old
+	// snapshot) is dropped.
+	ids, err := s.store.CaseIDs(r.Context())
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	p.Settings.Sections = models.KeepCases(p.Settings.Sections, func(id int64) bool { return ids[id] })
 	if err := s.store.SaveProfile(r.Context(), p, req.SteamAPIKey, req.LastfmAPIKey); err != nil {
 		serverError(w, r, err)
 		return
@@ -188,6 +196,10 @@ func (s *Server) listCollection(c string) http.HandlerFunc {
 			out, err = s.store.Referrals(ctx, false)
 		case "shortlinks":
 			out, err = s.store.ShortLinks(ctx)
+		case "cases":
+			out, err = s.store.Cases(ctx)
+		case "caseitems":
+			out, err = s.store.CaseItems(ctx)
 		}
 		if err != nil {
 			serverError(w, r, err)
@@ -270,6 +282,31 @@ func (s *Server) saveCollection(c string, update bool) http.HandlerFunc {
 			x.ID = id
 			validateReferral(v, x)
 			item, save = x, func(ctx context.Context) error { return s.store.SaveReferral(ctx, x) }
+		case "cases":
+			x := &models.Case{}
+			if !decode(w, r, x, 16<<10) {
+				return
+			}
+			x.ID = id
+			validateCase(v, x)
+			x.Items = []models.CaseItem{} // items have their own routes
+			item, save = x, func(ctx context.Context) error { return s.store.SaveCase(ctx, x) }
+		case "caseitems":
+			x := &models.CaseItem{}
+			if !decode(w, r, x, 32<<10) {
+				return
+			}
+			x.ID = id
+			validateCaseItem(v, x)
+			ok, err := s.store.CaseExists(r.Context(), x.CaseID)
+			if err != nil {
+				serverError(w, r, err)
+				return
+			}
+			if !ok {
+				v.add("case_id", "This case does not exist")
+			}
+			item, save = x, func(ctx context.Context) error { return s.store.SaveCaseItem(ctx, x) }
 		case "shortlinks":
 			x := &models.ShortLink{IsActive: true}
 			if !decode(w, r, x, 16<<10) {
@@ -467,4 +504,39 @@ func validateReferral(v validationError, x *models.Referral) {
 	x.DisplayStyle = models.OneOf(x.DisplayStyle, models.ReferralStyles, "banner")
 	x.Kind = models.OneOf(x.Kind, models.ReferralKinds, "referral")
 	x.Size = models.OneOf(x.Size, models.ReferralSizes, "medium")
+}
+
+// enumField trims and lowercases a choice field. Empty gets the default;
+// an unknown value is an error.
+func enumField(v validationError, field string, s *string, allowed []string, def string) {
+	*s = strings.ToLower(strings.TrimSpace(*s))
+	if *s == "" {
+		*s = def
+	}
+	if !slices.Contains(allowed, *s) {
+		v.add(field, "Unknown value")
+	}
+}
+
+func validateCase(v validationError, x *models.Case) {
+	text(v, "name", &x.Name, 1, 60)
+	text(v, "icon", &x.Icon, 0, 300)
+	if strings.Contains(x.Icon, "/") && !models.IsSafeURL(x.Icon) {
+		v.add("icon", "Use an icon name, https URL or uploaded file")
+	}
+	enumField(v, "layout", &x.Layout, models.CaseLayouts, "poster")
+	enumField(v, "aspect", &x.Aspect, models.CaseAspects, "2:3")
+}
+
+func validateCaseItem(v validationError, x *models.CaseItem) {
+	text(v, "title", &x.Title, 1, 160)
+	text(v, "subtitle", &x.Subtitle, 0, 160)
+	text(v, "rating", &x.Rating, 0, 40)
+	text(v, "tags", &x.Tags, 0, 300)
+	text(v, "note", &x.Note, 0, 2000)
+	safeURL(v, "image", x.Image)
+	x.Link = strings.TrimSpace(x.Link)
+	safeURL(v, "link", x.Link)
+	itemStatus(v, &x.Status)
+	enumField(v, "size", &x.Size, models.ItemSizes, "medium")
 }

@@ -95,7 +95,7 @@ Database changes run on their own at start-up. To stay on one major version, pin
 ## Backups
 
 - A database snapshot is written every day to `DATA_DIR/backups` (the last 7 are kept; see `BACKUP_KEEP`). You can also make one or download it under **Dashboard → Security & data**.
-- **Export content (JSON)** downloads your profile and collections. **Restore from JSON** loads such a file back. A backup is always taken first.
+- **Export content (JSON)** downloads your profile and collections. **Restore from JSON** loads such a file back. A backup is always taken first. Files from older versions still restore; custom cases are kept when the file has none.
 - **Profile history** keeps the last 30 versions of your profile and appearance. You can restore any of them with one click.
 - Uploaded files live in `DATA_DIR/uploads`. To back up everything, copy the whole data folder:
 

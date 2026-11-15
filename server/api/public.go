@@ -44,7 +44,7 @@ func (s *Server) getVault(w http.ResponseWriter, r *http.Request) {
 		serverError(w, r, err)
 		return
 	}
-	v := models.Vault{Referrals: []models.Referral{}, Games: []models.Game{}, Anime: []models.Media{}, Manga: []models.Media{}, Playlists: []models.Playlist{}}
+	v := models.Vault{Referrals: []models.Referral{}, Games: []models.Game{}, Anime: []models.Media{}, Manga: []models.Media{}, Playlists: []models.Playlist{}, Cases: []models.Case{}}
 	if !p.Settings.VaultEnabled {
 		writeJSON(w, http.StatusOK, v)
 		return
@@ -60,6 +60,8 @@ func (s *Server) getVault(w http.ResponseWriter, r *http.Request) {
 	g.Go(func() (err error) { media, err = s.store.Media(gctx); return })
 	g.Go(func() (err error) { v.Playlists, err = s.store.Playlists(gctx); return })
 	g.Go(func() (err error) { v.Referrals, err = s.store.Referrals(gctx, true); return })
+	var cases []models.Case
+	g.Go(func() (err error) { cases, err = s.store.Cases(gctx); return })
 	if err := g.Wait(); err != nil {
 		serverError(w, r, err)
 		return
@@ -87,6 +89,20 @@ func (s *Server) getVault(w http.ResponseWriter, r *http.Request) {
 	}
 	if !show["referrals"] {
 		v.Referrals = []models.Referral{}
+	}
+	// Cases come in section order. A "case:<id>" entry without a case (an old
+	// snapshot, a deleted case) is skipped.
+	byID := make(map[int64]models.Case, len(cases))
+	for _, c := range cases {
+		byID[c.ID] = c
+	}
+	for _, sec := range p.Settings.Sections {
+		if id, ok := models.CaseSectionID(sec); ok {
+			if c, ok := byID[id]; ok {
+				v.Cases = append(v.Cases, c)
+				delete(byID, id)
+			}
+		}
 	}
 	w.Header().Set("Cache-Control", "no-cache")
 	writeJSON(w, http.StatusOK, v)

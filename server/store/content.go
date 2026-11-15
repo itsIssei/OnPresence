@@ -36,20 +36,43 @@ func (s *Store) ExportContent(ctx context.Context) (*models.Export, error) {
 	if e.ShortLinks, err = s.ShortLinks(ctx); err != nil {
 		return nil, err
 	}
+	if e.Cases, err = s.Cases(ctx); err != nil {
+		return nil, err
+	}
 	return e, nil
 }
 
 // ImportContent replaces the profile and every collection with e, in one
-// transaction. Short links are only replaced when the file has them. The caller validates e first. API keys, the admin account,
+// transaction. Short links and cases are only replaced when the file has
+// them (v1 files have neither). "case:<id>" entries in the profile sections
+// are dropped when no such case exists afterwards. The caller validates e first. API keys, the admin account,
 // uploads and counters are kept. The replaced profile is snapshotted.
 func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 	e.Profile.Settings.Normalize()
-	settings, err := json.Marshal(e.Profile.Settings)
-	if err != nil {
-		return err
-	}
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		if err := snapshotTx(ctx, tx); err != nil {
+			return err
+		}
+		// Case ids in the file are kept, so a section entry is valid when the
+		// file has a case with that id. Without cases in the file the current
+		// ones stay.
+		var exist map[int64]bool
+		if e.Cases != nil {
+			exist = map[int64]bool{}
+			for _, c := range e.Cases {
+				if c.ID > 0 {
+					exist[c.ID] = true
+				}
+			}
+		} else {
+			var err error
+			if exist, err = caseIDs(ctx, tx); err != nil {
+				return err
+			}
+		}
+		e.Profile.Settings.Sections = models.KeepCases(e.Profile.Settings.Sections, func(id int64) bool { return exist[id] })
+		settings, err := json.Marshal(e.Profile.Settings)
+		if err != nil {
 			return err
 		}
 		p := e.Profile
@@ -69,6 +92,13 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 		if e.ShortLinks != nil {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM short_links`); err != nil {
 				return err
+			}
+		}
+		if e.Cases != nil {
+			for _, t := range []string{"case_items", "cases"} {
+				if _, err := tx.ExecContext(ctx, `DELETE FROM `+t); err != nil {
+					return err
+				}
 			}
 		}
 		// ids are kept (tables are empty) so /go/{id} link URLs stay valid;
@@ -118,6 +148,19 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 			if _, err := ins(`INSERT INTO short_links (id, slug, url, note, clicks, is_active, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 				x.ID, x.Slug, x.URL, x.Note, x.Clicks, b2i(x.IsActive), x.SortOrder, orNow(x.CreatedAt)); err != nil {
 				return err
+			}
+		}
+		for _, x := range e.Cases {
+			cid, err := ins(`INSERT INTO cases (id, name, icon, layout, aspect, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Name, x.Icon, x.Layout, x.Aspect, x.SortOrder, orNow(x.CreatedAt))
+			if err != nil {
+				return err
+			}
+			for _, it := range x.Items {
+				if _, err := ins(`INSERT INTO case_items (id, case_id, title, subtitle, image, rating, status, tags, note, link, size, is_featured, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					it.ID, cid, it.Title, it.Subtitle, it.Image, it.Rating, statusOrOwned(it.Status), it.Tags, it.Note, it.Link, it.Size, b2i(it.IsFeatured), it.SortOrder, orNow(it.CreatedAt)); err != nil {
+					return err
+				}
 			}
 		}
 		for _, x := range e.Playlists {

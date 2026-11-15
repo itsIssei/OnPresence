@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, Clock, Copy, ExternalLink, Pause, Play, Search, Star } from "lucide-react";
 import { siSpotify, siYoutubemusic } from "simple-icons";
-import { BrandIcon } from "@/lib/icons";
+import { BadgeGlyph, BrandIcon } from "@/lib/icons";
 import { statusLabel, strings, type StatusKind, type Strings } from "@/lib/i18n";
-import { ITEM_STATUSES, type Game, type ItemStatus, type Media, type Playlist, PublicProfile, Referral, SectionId, Vault as VaultData } from "@/lib/types";
+import { caseSectionId, ITEM_STATUSES, type Case, type CaseItem, type FixedSectionId, type Game, type ItemStatus, type Media, type Playlist, PublicProfile, Referral, SectionId, Vault as VaultData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { AudioController } from "@/site/audio";
 import { Modal, ModalDescription as DialogDescription, ModalTitle as DialogTitle } from "./Modal";
@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Detail = { kind: "game"; item: Game } | { kind: "media"; item: Media } | { kind: "playlist"; item: Playlist } | { kind: "entry"; item: Referral };
+type Detail = { kind: "case"; item: CaseItem; aspect: Case["aspect"] } | { kind: "game"; item: Game } | { kind: "media"; item: Media } | { kind: "playlist"; item: Playlist } | { kind: "entry"; item: Referral };
 
 export function Vault({ profile, vault, audio, onClose }: Props) {
   const s = profile.settings;
@@ -28,8 +28,15 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
   const q = query.trim().toLowerCase();
   const match = (...fields: string[]) => !q || fields.some((f) => f.toLowerCase().includes(q));
 
+  const caseById = useMemo(() => new Map(vault.cases.map((c) => [c.id, c])), [vault]);
+  const caseOf = (id: SectionId) => {
+    const n = caseSectionId(id);
+    return n === null ? undefined : caseById.get(n);
+  };
+
   const data = useMemo(
     () => ({
+      cases: new Map(vault.cases.map((c) => [c.id, c.items.filter((i) => match(i.title, i.subtitle, i.tags, i.note))])),
       referrals: vault.referrals.filter((r) => match(r.title, r.game_name, r.description)),
       games: vault.games.filter((g) => match(g.title, g.subtitle, g.category, g.review_note)),
       anime: vault.anime.filter((m) => match(m.title, m.tags, m.category_badge)),
@@ -40,10 +47,21 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
     [vault, q],
   );
 
-  const sections = s.sections.filter((id) => (id === "music" ? vault.playlists.length : vault[id].length) > 0);
+  const total = (id: SectionId) => {
+    if (caseSectionId(id) !== null) return caseOf(id)?.items.length ?? 0;
+    const f = id as FixedSectionId;
+    return f === "music" ? vault.playlists.length : vault[f].length;
+  };
+  const found = (id: SectionId) => {
+    const c = caseOf(id);
+    return c ? data.cases.get(c.id)?.length ?? 0 : data[id as FixedSectionId].length;
+  };
+  // A "case:<id>" entry without a case (deleted, old snapshot) is skipped.
+  const sections = s.sections.filter((id) => total(id) > 0);
   const visible = sections.filter((id) => filter === "all" || filter === id);
-  const labels: Record<SectionId, string> = { referrals: t.referrals, games: t.games, anime: t.anime, manga: t.manga, music: t.music };
-  const empty = visible.every((id) => data[id].length === 0);
+  const fixedLabels: Record<FixedSectionId, string> = { referrals: t.referrals, games: t.games, anime: t.anime, manga: t.manga, music: t.music };
+  const label = (id: SectionId) => caseOf(id)?.name ?? fixedLabels[id as FixedSectionId];
+  const empty = visible.every((id) => found(id) === 0);
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6" aria-label={s.vault_title}>
@@ -85,8 +103,8 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
                 filter === id ? "bg-brand text-white shadow-[0_0_20px_-4px_var(--brand)]" : "bg-white/5 text-white/65 hover:bg-white/10 hover:text-white",
               )}
             >
-              {id === "all" ? t.all : labels[id]}
-              {id !== "all" && <span className="ml-1.5 opacity-60">{id === "music" ? vault.playlists.length : vault[id].length}</span>}
+              {id === "all" ? t.all : label(id)}
+              {id !== "all" && <span className="ml-1.5 opacity-60">{total(id)}</span>}
             </button>
           ))}
         </div>
@@ -105,21 +123,23 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
 
       <div className="flex flex-col gap-12">
         {visible.map((id) => {
-          const items = data[id];
+          const c = caseOf(id);
+          const items = c ? data.cases.get(c.id) ?? [] : data[id as FixedSectionId];
           if (!items.length) return null;
-          const kind = id === "games" ? "game" : id === "anime" || id === "manga" ? id : null;
-          const all: { status: ItemStatus }[] = id === "games" || id === "anime" || id === "manga" ? vault[id] : [];
+          const fixed = id as FixedSectionId;
+          const kind: StatusKind | null = c ? "case" : fixed === "games" ? "game" : fixed === "anime" || fixed === "manga" ? fixed : null;
+          const all: { status: ItemStatus }[] = c ? c.items : fixed === "games" || fixed === "anime" || fixed === "manga" ? vault[fixed] : [];
           const present = ITEM_STATUSES.filter((st) => all.some((x) => x.status === st));
           const active = statusFilter[id] && present.includes(statusFilter[id]) ? statusFilter[id] : undefined;
           const byStatus = <T extends { status: ItemStatus }>(list: T[]) => (active ? list.filter((x) => x.status === active) : list);
           return (
             <div key={id}>
               <h3 className="mb-4 flex items-center gap-2 font-display text-base font-bold uppercase tracking-[0.12em] text-white/90">
-                <span className="size-2 rounded-full bg-brand shadow-[0_0_10px_var(--brand)]" />
-                {labels[id]}
+                {c && c.icon ? <BadgeGlyph icon={c.icon} className="size-4 text-brand" /> : <span className="size-2 rounded-full bg-brand shadow-[0_0_10px_var(--brand)]" />}
+                {label(id)}
               </h3>
               {kind && present.length > 1 && (
-                <div className="-mt-1 mb-4 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="group" aria-label={labels[id]}>
+                <div className="-mt-1 mb-4 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="group" aria-label={label(id)}>
                   {([undefined, ...present] as const).map((st) => (
                     <button
                       key={st ?? "all"}
@@ -136,6 +156,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
                   ))}
                 </div>
               )}
+              {c && <CaseGrid c={c} items={byStatus(data.cases.get(c.id) ?? [])} t={t} onOpen={(item) => setDetail({ kind: "case", item, aspect: c.aspect })} />}
               {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => setDetail({ kind: "entry", item })} />}
               {id === "games" && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -456,6 +477,7 @@ function EntryDetail({ r, t }: { r: Referral; t: Strings }) {
 
 function DetailView({ d, t, audio }: { d: Detail; t: Strings; audio: AudioController | null }) {
   if (d.kind === "entry") return <EntryDetail r={d.item} t={t} />;
+  if (d.kind === "case") return <CaseItemDetail item={d.item} aspect={d.aspect} t={t} />;
   if (d.kind === "game") {
     const g = d.item;
     return (
@@ -557,6 +579,163 @@ function DetailView({ d, t, audio }: { d: Detail; t: Strings; audio: AudioContro
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Custom cases
+
+const ASPECT_CLASS = { "2:3": "aspect-[2/3]", "1:1": "aspect-square", "16:9": "aspect-video" } as const;
+/** Thumbnail width in the list layout; the height follows the aspect. */
+const THUMB_CLASS = { "2:3": "w-16", "1:1": "w-20", "16:9": "w-32" } as const;
+
+// 2 columns on phones, 6 on tablets, 12 on desktops. Small, medium and large
+// tiles take 1/2/3 steps of the row. The list layout ignores the size.
+const CASE_GRID = {
+  poster: {
+    grid: "grid grid-flow-row-dense grid-cols-2 gap-4 sm:grid-cols-6 lg:grid-cols-12",
+    span: { small: "col-span-1 lg:col-span-2", medium: "col-span-1 sm:col-span-2 lg:col-span-3", large: "col-span-2 sm:col-span-3 lg:col-span-4" },
+  },
+  wide: {
+    grid: "grid grid-flow-row-dense grid-cols-2 gap-4 sm:grid-cols-6 lg:grid-cols-12",
+    span: { small: "col-span-2 sm:col-span-2 lg:col-span-3", medium: "col-span-2 sm:col-span-3 lg:col-span-4", large: "col-span-2 sm:col-span-6 lg:col-span-6" },
+  },
+  list: { grid: "grid gap-2", span: { small: "", medium: "", large: "" } },
+} as const;
+
+function CaseGrid({ c, items, t, onOpen }: { c: Case; items: CaseItem[]; t: Strings; onOpen: (i: CaseItem) => void }) {
+  const g = CASE_GRID[c.layout] ?? CASE_GRID.poster;
+  return (
+    <div className={g.grid}>
+      {items.map((i) => (
+        <CaseItemCard key={i.id} item={i} layout={c.layout} aspect={c.aspect} className={g.span[i.size] ?? g.span.medium} t={t} onOpen={() => onOpen(i)} />
+      ))}
+    </div>
+  );
+}
+
+/** One tile of a custom case. The case's layout and aspect decide the shape. */
+function CaseItemCard({ item, layout, aspect, className, t, onOpen }: { item: CaseItem; layout: Case["layout"]; aspect: Case["aspect"]; className?: string; t: Strings; onOpen: () => void }) {
+  const ratio = ASPECT_CLASS[aspect] ?? ASPECT_CLASS["2:3"];
+  const featured = item.is_featured && (
+    <span className="absolute left-2 top-2 rounded-md bg-brand px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">{t.featured}</span>
+  );
+  const rating = item.rating && (
+    <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur">
+      <Star className="size-3 fill-current text-amber-400" />
+      {item.rating}
+    </span>
+  );
+
+  if (layout === "list") {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`${item.title}: ${t.details}`}
+        className="group flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-2.5 text-left transition hover:border-white/15"
+      >
+        <div className={cn("relative flex-none overflow-hidden rounded-lg bg-black/40", ratio, THUMB_CLASS[aspect] ?? THUMB_CLASS["2:3"])}>
+          <Cover src={item.image} alt={item.title} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold text-white">{item.title}</p>
+          {item.subtitle && <p className="truncate text-xs text-white/55">{item.subtitle}</p>}
+          {item.tags && <p className="mt-0.5 truncate text-[11px] text-white/40">{item.tags}</p>}
+        </div>
+        <div className="flex flex-none flex-col items-end gap-1 text-xs">
+          {item.rating && (
+            <span className="flex items-center gap-1 font-semibold text-white">
+              <Star className="size-3 fill-current text-amber-400" />
+              {item.rating}
+            </span>
+          )}
+          {item.is_featured && <span className="rounded-md bg-brand px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">{t.featured}</span>}
+          {item.status !== "owned" && <StatusLabel status={item.status} />}
+        </div>
+      </button>
+    );
+  }
+
+  if (layout === "wide") {
+    return (
+      <button type="button" onClick={onOpen} aria-label={`${item.title}: ${t.details}`} className={cn("group overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] text-left transition hover:-translate-y-0.5 hover:border-white/15", className)}>
+        <div className={cn("relative overflow-hidden bg-black/40", ratio)}>
+          <Cover src={item.image} alt={item.title} />
+          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent" />
+          {featured}
+          {rating}
+          <StatusStrip status={item.status} kind="case" />
+        </div>
+        <div className="p-3.5">
+          <p className="truncate font-semibold text-white">{item.title}</p>
+          {(item.subtitle || item.tags) && <p className="mt-0.5 truncate text-xs text-white/55">{[item.subtitle, item.tags].filter(Boolean).join(" · ")}</p>}
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onOpen} aria-label={`${item.title}: ${t.details}`} className={cn("group text-left", className)}>
+      <div className={cn("relative overflow-hidden rounded-xl border border-white/[0.07] bg-black/40 transition group-hover:-translate-y-0.5 group-hover:border-white/15", ratio)}>
+        <Cover src={item.image} alt={item.title} />
+        {featured}
+        {rating}
+        <StatusStrip status={item.status} kind="case" />
+      </div>
+      <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-white">{item.title}</p>
+      {item.subtitle && <p className="mt-0.5 truncate text-xs text-white/50">{item.subtitle}</p>}
+    </button>
+  );
+}
+
+/** Everything about a case item. The note is plain text. */
+function CaseItemDetail({ item, aspect, t }: { item: CaseItem; aspect: Case["aspect"]; t: Strings }) {
+  const tags = item.tags.split(",").map((x) => x.trim()).filter(Boolean);
+  return (
+    <>
+      {item.image && (
+        <div className={cn("relative mx-auto max-h-[60dvh] bg-black/40", aspect === "16:9" ? "w-full" : aspect === "1:1" ? "aspect-square max-w-sm" : "max-w-xs", ASPECT_CLASS[aspect] ?? "")}>
+          <Cover src={item.image} alt={item.title} />
+        </div>
+      )}
+      <div className="space-y-3 p-5">
+        <DialogTitle className="font-display text-xl">{item.title}</DialogTitle>
+        {item.subtitle ? <DialogDescription className="text-white/60">{item.subtitle}</DialogDescription> : <DialogDescription className="sr-only">{item.title}</DialogDescription>}
+        <div className="flex flex-wrap gap-2 text-xs">
+          {item.rating && <Chip>★ {item.rating}</Chip>}
+          {item.status !== "owned" && <Chip>{statusLabel(item.status, "case")}</Chip>}
+          {tags.map((tag) => (
+            <Chip key={tag}>{tag}</Chip>
+          ))}
+        </div>
+        {item.note && <p className="whitespace-pre-line text-sm leading-relaxed text-white/80">{item.note}</p>}
+        {item.link && (
+          <a
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:brightness-110"
+          >
+            {t.open}
+            <span className="font-mono text-xs font-normal opacity-80">{linkLabel(item.link)}</span>
+            <ExternalLink className="size-3.5" />
+          </a>
+        )}
+      </div>
+    </>
+  );
+}
+
+function StatusLabel({ status }: { status: ItemStatus }) {
+  return <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white", STATUS_TONE[status])}>{statusLabel(status, "case")}</span>;
+}
+
+const STATUS_TONE: Record<ItemStatus, string> = {
+  owned: "bg-black/65 text-white/75",
+  playing: "bg-sky-500/80",
+  completed: "bg-emerald-600/80",
+  dropped: "bg-black/65 text-white/75",
+  wishlist: "bg-violet-500/80",
+};
 
 function mediaKind(m: Media): StatusKind {
   return m.type === "anime" ? "anime" : "manga";

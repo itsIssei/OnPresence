@@ -1,6 +1,11 @@
 // Package models holds the JSON/DB shapes shared by store and api.
 package models
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Profile is the singleton owner profile (row id = 1).
 type Profile struct {
 	Name          string `json:"name"`
@@ -65,7 +70,7 @@ type Settings struct {
 	VaultIcon       string   `json:"vault_icon"`
 	VaultSteamBadge string   `json:"vault_steam_badge"`
 	CollectionScore string   `json:"collection_score"`
-	Sections        []string `json:"sections"` // visible sections, in display order
+	Sections        []string `json:"sections"` // visible sections, in display order: fixed ids plus "case:<id>" for custom cases
 }
 
 var (
@@ -145,11 +150,15 @@ func (s *Settings) Normalize() {
 	s.AvatarZoom = clampI(s.AvatarZoom, 50, 200)
 	s.GateText = truncate(s.GateText, 60)
 
-	// Sections: keep known ids once, in the given order.
+	// Sections: keep known ids and well-formed "case:<id>" entries once, in
+	// the given order. Whether a case still exists is the store's concern.
 	seen := map[string]bool{}
 	var secs []string
 	for _, id := range s.Sections {
-		if contains(SectionIDs, id) && !seen[id] {
+		if seen[id] {
+			continue
+		}
+		if _, isCase := CaseSectionID(id); contains(SectionIDs, id) || isCase {
 			seen[id] = true
 			secs = append(secs, id)
 		}
@@ -161,6 +170,36 @@ func (s *Settings) Normalize() {
 		secs = []string{}
 	}
 	s.Sections = secs
+}
+
+// CaseSection is the Sections entry for a custom case.
+func CaseSection(id int64) string { return "case:" + strconv.FormatInt(id, 10) }
+
+// CaseSectionID parses a "case:<id>" Sections entry. Only the canonical
+// form (a positive integer without sign or leading zeros) is accepted.
+func CaseSectionID(s string) (int64, bool) {
+	rest, ok := strings.CutPrefix(s, "case:")
+	if !ok {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(rest, 10, 64)
+	if err != nil || id <= 0 || strconv.FormatInt(id, 10) != rest {
+		return 0, false
+	}
+	return id, true
+}
+
+// KeepCases returns sections without the "case:<id>" entries whose case does
+// not exist.
+func KeepCases(sections []string, exists func(id int64) bool) []string {
+	out := make([]string, 0, len(sections))
+	for _, sec := range sections {
+		if id, isCase := CaseSectionID(sec); isCase && !exists(id) {
+			continue
+		}
+		out = append(out, sec)
+	}
+	return out
 }
 
 // Secrets are API keys stored with the profile. They are write-only in the
@@ -295,7 +334,47 @@ type Referral struct {
 var (
 	ReferralStyles = []string{"banner", "card"}
 	ReferralKinds  = []string{"project", "referral"}
-	ReferralSizes  = []string{"small", "medium", "large"}
+	ReferralSizes  = ItemSizes
+)
+
+// ItemSizes are the tile sizes of referrals and case items.
+var ItemSizes = []string{"small", "medium", "large"}
+
+// Case is a custom display case: a named group of items with its own look.
+// Its visibility and place in the vault come from Settings.Sections
+// ("case:<id>").
+type Case struct {
+	ID        int64      `json:"id"`
+	Name      string     `json:"name"`
+	Icon      string     `json:"icon"`   // same forms as Badge.Icon
+	Layout    string     `json:"layout"` // see CaseLayouts
+	Aspect    string     `json:"aspect"` // see CaseAspects
+	SortOrder int        `json:"sort_order"`
+	CreatedAt string     `json:"created_at"`
+	Items     []CaseItem `json:"items"`
+}
+
+// CaseItem is one entry of a Case.
+type CaseItem struct {
+	ID         int64  `json:"id"`
+	CaseID     int64  `json:"case_id"`
+	Title      string `json:"title"`
+	Subtitle   string `json:"subtitle"`
+	Image      string `json:"image"`
+	Rating     string `json:"rating"`
+	Status     string `json:"status"` // see ItemStatuses
+	Tags       string `json:"tags"`   // comma separated
+	Note       string `json:"note"`   // plain text
+	Link       string `json:"link"`
+	Size       string `json:"size"` // see ItemSizes
+	IsFeatured bool   `json:"is_featured"`
+	SortOrder  int    `json:"sort_order"`
+	CreatedAt  string `json:"created_at"`
+}
+
+var (
+	CaseLayouts = []string{"poster", "wide", "list"}
+	CaseAspects = []string{"2:3", "1:1", "16:9"}
 )
 
 // Upload is a file in the media library (data/uploads).
@@ -325,6 +404,7 @@ type Vault struct {
 	Anime     []Media    `json:"anime"`
 	Manga     []Media    `json:"manga"`
 	Playlists []Playlist `json:"playlists"`
+	Cases     []Case     `json:"cases"` // only the cases listed in Settings.Sections
 }
 
 // PublicProfile is what /api/v1/profile returns.
@@ -366,7 +446,7 @@ type ShortLink struct {
 }
 
 // ExportVersion is the current content export format.
-const ExportVersion = 1
+const ExportVersion = 2
 
 // Export is the full site content as JSON (download and restore). It holds
 // no secrets: API keys, the admin account and sessions are not included.
@@ -383,4 +463,7 @@ type Export struct {
 	// ShortLinks is nil in files exported before short links existed;
 	// restoring such a file keeps the current short links.
 	ShortLinks []ShortLink `json:"short_links"`
+	// Cases (with their items) is nil in v1 files; restoring such a file keeps
+	// the current cases.
+	Cases []Case `json:"cases"`
 }

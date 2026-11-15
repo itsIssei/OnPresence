@@ -42,9 +42,11 @@ interface Props<C extends CollectionName> {
   importer?: (apply: (patch: Partial<Item<C>>) => void) => React.ReactNode;
   sortable?: boolean;
   empty?: string;
+  /** Called after a save, delete or reorder, for caches that depend on this list. */
+  onChange?: () => void;
 }
 
-export function CollectionManager<C extends CollectionName>({ collection, noun, fields, defaults, row, filter, importer, sortable = true, empty }: Props<C>) {
+export function CollectionManager<C extends CollectionName>({ collection, noun, fields, defaults, row, filter, importer, sortable = true, empty, onChange }: Props<C>) {
   const qc = useQueryClient();
   const key = ["admin", collection];
   const q = useQuery({ queryKey: key, queryFn: () => api.list(collection) });
@@ -70,6 +72,7 @@ export function CollectionManager<C extends CollectionName>({ collection, noun, 
     qc.invalidateQueries({ queryKey: key });
     qc.invalidateQueries({ queryKey: ["profile"] });
     qc.invalidateQueries({ queryKey: ["vault"] });
+    onChange?.();
   };
 
   const del = useMutation({

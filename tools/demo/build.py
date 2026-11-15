@@ -154,12 +154,20 @@ def build_images():
     r["palette"] = write("project-pixel-palette.svg", svg(800, 300, cover_abstract(800, 300, "#7c3aed", "#db2777", 14)))
     r["bot"] = write("project-lobby-bot.svg", svg(800, 300, cover_abstract(800, 300, "#0d9488", "#1e3a8a", 12)))
     r["host"] = write("ref-cloudlet.svg", svg(800, 300, cover_landscape(800, 300, ("#0c4a6e", "#22d3ee"), "#f0fdfa", ["#155e75", "#164e63", "#083344"])))
-    return write("avatar.svg", avatar()), write("banner.svg", banner()), g, m, p, r
+    avatar_url, banner_url = write("avatar.svg", avatar()), write("banner.svg", banner())
+    # Custom case "Films". Drawn last so the artwork above stays unchanged.
+    f = {}
+    f["afterglow"] = write("film-afterglow.svg", svg(300, 450, cover_city(300, 450, ("#1e1b4b", "#be185d"), ["#fde68a", "#f0abfc"])))
+    f["paper"] = write("film-paper-lanterns.svg", svg(300, 450, cover_ocean(300, 450, ("#0f172a", "#7c2d12"), ("#7c2d12", "#1c0a05"), "#fef3c7")))
+    f["signal"] = write("film-last-signal.svg", svg(300, 450, cover_landscape(300, 450, ("#0c4a6e", "#0e7490"), "#e0f2fe", ["#164e63", "#083344", "#042f2e"])))
+    f["velvet"] = write("film-velvet-hour.svg", svg(300, 450, cover_abstract(300, 450, "#9d174d", "#312e81", 9)))
+    f["drift"] = write("film-quiet-drift.svg", svg(300, 450, cover_abstract(300, 450, "#065f46", "#0f172a", 11)))
+    return avatar_url, banner_url, g, m, p, r, f
 
 
 # ---------------------------------------------------------------- content
 
-def content(avatar_url, banner_url, g, m, p, r):
+def content(avatar_url, banner_url, g, m, p, r, f):
     settings = {
         "theme": "violet", "accent_color": "#a78bfa",
         "avatar_decoration": "orbit", "profile_effect": "starfall",
@@ -171,7 +179,7 @@ def content(avatar_url, banner_url, g, m, p, r):
         "show_presence": True, "show_view_count": True, "show_credit": True,
         "vault_enabled": True, "vault_title": "Nova's Shelf", "vault_subtitle": "Games, anime and music that shaped my pixels.",
         "vault_badge": "Curated", "vault_icon": "/img/brand/vault.svg", "vault_steam_badge": "", "collection_score": "",
-        "sections": ["referrals", "games", "anime", "manga", "music"],
+        "sections": ["referrals", "games", "anime", "manga", "music", "case:1"],
     }
     profile = {
         "name": "Nova", "handle": "@nova.pixels", "title": "Pixel artist & speedrunner",
@@ -222,11 +230,21 @@ def content(avatar_url, banner_url, g, m, p, r):
         {"kind": "project", "size": "medium", "title": "Lobby Bot", "game_name": "Chat bot", "ref_code": "", "ref_url": "https://github.com", "image_url": r["bot"], "description": "Speedrun race lobbies with split tracking.", "reward_text": "", "badge": "", "display_style": "card", "is_active": True},
         {"kind": "referral", "size": "small", "title": "Cloudlet Hosting", "game_name": "Hosting", "ref_code": "NOVA20", "ref_url": "https://example.com", "image_url": r["host"], "description": "Where this card is hosted.", "reward_text": "20% off your first month", "badge": "", "display_style": "card", "is_active": True},
     ]
-    for coll in (games, media, playlists, referrals):
+    film_items = [
+        {"title": "Afterglow", "subtitle": "Drama, 2021", "image": f["afterglow"], "rating": "9/10", "status": "completed", "tags": "neon, drama", "note": "Every frame could be a pixel art reference.", "link": "", "size": "medium", "is_featured": True},
+        {"title": "Paper Lanterns", "subtitle": "Fantasy, 2019", "image": f["paper"], "rating": "8.5/10", "status": "completed", "tags": "fantasy", "note": "", "link": "", "size": "medium", "is_featured": False},
+        {"title": "The Last Signal", "subtitle": "Sci-fi, 2023", "image": f["signal"], "rating": "8/10", "status": "playing", "tags": "sci-fi, mystery", "note": "Halfway through, no spoilers please.", "link": "https://example.com", "size": "medium", "is_featured": False},
+        {"title": "Velvet Hour", "subtitle": "Thriller, 2022", "image": f["velvet"], "rating": "", "status": "wishlist", "tags": "thriller", "note": "", "link": "", "size": "medium", "is_featured": False},
+        {"title": "Quiet Drift", "subtitle": "Documentary, 2018", "image": f["drift"], "rating": "7/10", "status": "dropped", "tags": "documentary", "note": "Beautiful, but too slow for me.", "link": "", "size": "medium", "is_featured": False},
+    ]
+    cases = [{"id": 1, "name": "Films", "icon": "star", "layout": "poster", "aspect": "2:3", "sort_order": 0, "items": film_items}]
+    for coll in (games, media, playlists, referrals, film_items):
         for i, x in enumerate(coll):
             x["sort_order"] = i
-    return {"app": "onpresence", "version": 1, "profile": profile, "links": links, "badges": badges, "games": games,
-            "media": media, "playlists": playlists, "referrals": referrals}
+    for i, x in enumerate(film_items, start=1):
+        x.update(id=i, case_id=1)
+    return {"app": "onpresence", "version": 2, "profile": profile, "links": links, "badges": badges, "games": games,
+            "media": media, "playlists": playlists, "referrals": referrals, "cases": cases}
 
 
 def main():

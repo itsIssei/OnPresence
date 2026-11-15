@@ -2,7 +2,7 @@ import { useState } from "react";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { EyeOff, GripVertical, Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge as UIBadge } from "@/components/ui/badge";
@@ -11,15 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, type AniListResult, type GameSearchResult } from "@/lib/api";
+import { BADGE_ICONS, BadgeGlyph } from "@/lib/icons";
 import { statusLabel, type StatusKind } from "@/lib/i18n";
-import { ITEM_STATUSES, type Game, type ItemStatus, type Media, Playlist, Referral, SectionId, Track } from "@/lib/types";
+import { caseSectionId, type Case, type CaseItem, type FixedSectionId, ITEM_STATUSES, type Game, type ItemStatus, type Media, Playlist, Referral, SectionId, Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDraft } from "../draft";
 import { CollectionManager, type FieldDef } from "../Collection";
 import { Field, MediaInput, PageHeader, Section } from "../kit";
 
-const SECTION_LABEL: Record<SectionId, string> = { referrals: "Projects & referrals", games: "Games", anime: "Anime", manga: "Manga & manhwa", music: "Music" };
-const TABS: { id: SectionId; label: string }[] = [
+const SECTION_LABEL: Record<FixedSectionId, string> = { referrals: "Projects & referrals", games: "Games", anime: "Anime", manga: "Manga & manhwa", music: "Music" };
+const TABS: { id: FixedSectionId; label: string }[] = [
   { id: "games", label: "Games" },
   { id: "anime", label: "Anime" },
   { id: "manga", label: "Manga" },
@@ -59,6 +60,7 @@ export function VaultPage() {
               {!shown(t.id) && <EyeOff className="size-3.5 text-muted-foreground" aria-label="hidden" />}
             </TabsTrigger>
           ))}
+          <TabsTrigger value="cases">Custom cases</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         {TABS.map((t) => (
@@ -79,6 +81,9 @@ export function VaultPage() {
             {t.id === "referrals" && <ReferralsManager />}
           </TabsContent>
         ))}
+        <TabsContent value="cases" className="grid gap-5">
+          <CasesTab />
+        </TabsContent>
         <TabsContent value="settings">
           <VaultSettings />
         </TabsContent>
@@ -91,15 +96,27 @@ export function VaultPage() {
 
 function VaultSettings() {
   const { draft, setSetting } = useDraft();
+  const casesQuery = useQuery({ queryKey: ["admin", "cases"], queryFn: () => api.list("cases") });
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   if (!draft) return null;
   const s = draft.settings;
-  const all: SectionId[] = [...s.sections, ...(Object.keys(SECTION_LABEL) as SectionId[]).filter((x) => !s.sections.includes(x))];
+  const cases = casesQuery.data ?? [];
+  const caseName = new Map(cases.map((c) => [`case:${c.id}`, c.name]));
+  // Until the case list has loaded, keep every case entry as it is.
+  const known = (id: SectionId) => id in SECTION_LABEL || caseName.has(id) || (!casesQuery.isSuccess && caseSectionId(id) !== null);
+  const label = (id: SectionId) => SECTION_LABEL[id as FixedSectionId] ?? caseName.get(id) ?? id;
+  // Listed sections first, then the hidden ones. A case that no longer exists is left out.
+  const listed = s.sections.filter(known);
+  const all: SectionId[] = [
+    ...listed,
+    ...(Object.keys(SECTION_LABEL) as SectionId[]).filter((x) => !listed.includes(x)),
+    ...cases.map((c) => `case:${c.id}` as SectionId).filter((x) => !listed.includes(x)),
+  ];
 
   const onDragEnd = (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return;
     const next = arrayMove(all, all.indexOf(e.active.id as SectionId), all.indexOf(e.over.id as SectionId));
-    setSetting("sections", next.filter((x) => s.sections.includes(x)));
+    setSetting("sections", next.filter((x) => listed.includes(x)));
   };
 
   return (
@@ -138,8 +155,9 @@ function VaultSettings() {
                 <SectionRow
                   key={id}
                   id={id}
-                  on={s.sections.includes(id)}
-                  toggle={(on) => setSetting("sections", on ? all.filter((x) => x === id || s.sections.includes(x)) : s.sections.filter((x) => x !== id))}
+                  label={label(id)}
+                  on={listed.includes(id)}
+                  toggle={(on) => setSetting("sections", on ? all.filter((x) => x === id || listed.includes(x)) : listed.filter((x) => x !== id))}
                 />
               ))}
             </ul>
@@ -150,15 +168,16 @@ function VaultSettings() {
   );
 }
 
-function SectionRow({ id, on, toggle }: { id: SectionId; on: boolean; toggle: (on: boolean) => void }) {
+function SectionRow({ id, label, on, toggle }: { id: SectionId; label: string; on: boolean; toggle: (on: boolean) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="flex items-center gap-3 rounded-xl border bg-card/70 p-3">
       <button type="button" className="cursor-grab touch-none text-muted-foreground" aria-label="Drag" {...attributes} {...listeners}>
         <GripVertical className="size-4" />
       </button>
-      <span className="flex-1 text-sm font-medium">{SECTION_LABEL[id]}</span>
-      <Switch checked={on} onCheckedChange={toggle} aria-label={`Show ${SECTION_LABEL[id]}`} />
+      <span className="flex-1 truncate text-sm font-medium">{label}</span>
+      {caseSectionId(id) !== null && <UIBadge variant="outline">Custom</UIBadge>}
+      <Switch checked={on} onCheckedChange={toggle} aria-label={`Show ${label}`} />
     </li>
   );
 }
@@ -519,5 +538,135 @@ function ReferralsManager() {
         ),
       })}
     />
+  );
+}
+
+// ---------------------------------------------------------------- custom cases
+
+const caseFields: FieldDef<Case>[] = [
+  { key: "name", label: "Name", type: "text", maxLength: 60, hint: "e.g. Films, Books, Figures" },
+  { key: "layout", label: "Layout", type: "select", options: { poster: "Poster grid", wide: "Wide cards", list: "List" } },
+  { key: "aspect", label: "Image shape", type: "select", options: { "2:3": "Portrait (2:3)", "1:1": "Square (1:1)", "16:9": "Landscape (16:9)" } },
+  {
+    key: "icon",
+    label: "Icon",
+    type: "custom",
+    render: (v, set) => (
+      <Field label="Icon" hint="Shown next to the name. Or paste an https:// image URL.">
+        {() => (
+          <div className="grid gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {Object.keys(BADGE_ICONS).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => set({ icon: k })}
+                  title={k}
+                  className={cn("grid size-10 place-items-center rounded-lg border transition hover:bg-accent", v.icon === k && "border-ring ring-1 ring-ring")}
+                >
+                  <BadgeGlyph icon={k} className="size-5" />
+                </button>
+              ))}
+            </div>
+            <Input
+              value={v.icon?.startsWith("https://") || v.icon?.startsWith("/") ? v.icon : ""}
+              onChange={(e) => set({ icon: e.target.value })}
+              placeholder="https://… (optional image icon)"
+            />
+          </div>
+        )}
+      </Field>
+    ),
+  },
+];
+
+const caseItemFields: FieldDef<CaseItem>[] = [
+  { key: "title", label: "Title", type: "text", maxLength: 160 },
+  { key: "subtitle", label: "Subtitle", type: "text", maxLength: 160, hint: "e.g. director, author, year" },
+  { key: "image", label: "Image", type: "image" },
+  { key: "rating", label: "Rating", type: "rating" },
+  { key: "status", label: "Status", type: "select", options: statusOptions("case") },
+  { key: "size", label: "Tile size", type: "select", options: { small: "Small", medium: "Medium", large: "Large" }, hint: "Not used by the list layout." },
+  { key: "tags", label: "Tags", type: "text", maxLength: 300, hint: "Comma separated" },
+  { key: "link", label: "Link", type: "text", hint: "https://… shown in the details popup" },
+  { key: "is_featured", label: "Featured", type: "switch" },
+  { key: "note", label: "Note", type: "textarea", maxLength: 2000, hint: "Plain text, shown in the details popup." },
+];
+
+function CasesTab() {
+  const qc = useQueryClient();
+  const { draft } = useDraft();
+  const q = useQuery({ queryKey: ["admin", "cases"], queryFn: () => api.list("cases") });
+  const [picked, setPicked] = useState<number | null>(null);
+  const cases = q.data ?? [];
+  const current = cases.find((c) => c.id === picked) ?? cases[0];
+  // Deleting a case also removes it from the profile's sections, and items change the counts.
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "cases"] });
+    qc.invalidateQueries({ queryKey: ["admin", "caseitems"] });
+    qc.invalidateQueries({ queryKey: ["admin", "profile"] });
+  };
+  const visible = (c: Case) => !!draft?.settings.sections.includes(`case:${c.id}`);
+
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">
+        Your own categories (films, books, figures…). A new case stays hidden until you switch it on under Settings → Sections, where you can also move it between the other sections.
+      </p>
+      <Section title="Cases">
+        <CollectionManager
+          collection="cases"
+          noun="Case"
+          fields={caseFields}
+          defaults={{ name: "", icon: "", layout: "poster", aspect: "2:3" }}
+          onChange={refresh}
+          empty="No custom cases yet. Add one, for example “Films”."
+          row={(c) => ({
+            title: c.name,
+            subtitle: [c.layout, c.aspect, `${c.items?.length ?? 0} items`].join(" · "),
+            muted: !visible(c),
+            meta: (
+              <>
+                {c.icon && <BadgeGlyph icon={c.icon} className="size-4" />}
+                {!visible(c) && <UIBadge variant="outline">Hidden</UIBadge>}
+              </>
+            ),
+          })}
+        />
+      </Section>
+      {current && (
+        <Section title="Items" description="Pick a case, then add its items. Drag to reorder.">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Case">
+            {cases.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setPicked(c.id)}
+                aria-pressed={current.id === c.id}
+                className={cn("rounded-full border px-3.5 py-1.5 text-sm transition", current.id === c.id ? "border-ring bg-accent font-medium" : "text-muted-foreground hover:bg-accent/50")}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+          <CollectionManager
+            key={current.id}
+            collection="caseitems"
+            noun="Item"
+            fields={caseItemFields}
+            filter={(i) => i.case_id === current.id}
+            defaults={{ case_id: current.id, title: "", status: "owned", size: "medium", is_featured: false }}
+            onChange={refresh}
+            empty={`No items in ${current.name} yet.`}
+            row={(i) => ({
+              title: i.title,
+              subtitle: [i.subtitle, i.rating].filter(Boolean).join(" · "),
+              image: i.image,
+              meta: i.is_featured ? <Star className="size-4 fill-amber-400 text-amber-400" /> : null,
+            })}
+          />
+        </Section>
+      )}
+    </>
   );
 }

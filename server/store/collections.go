@@ -22,6 +22,8 @@ var collectionTables = map[string]string{
 	"playlists":  "playlists",
 	"referrals":  "referrals",
 	"shortlinks": "short_links",
+	"cases":      "cases",
+	"caseitems":  "case_items",
 }
 
 func tableFor(collection string) (string, error) {
@@ -34,6 +36,9 @@ func tableFor(collection string) (string, error) {
 
 // Delete removes one row from a collection.
 func (s *Store) Delete(ctx context.Context, collection string, id int64) error {
+	if collection == "cases" {
+		return s.deleteCase(ctx, id)
+	}
 	t, err := tableFor(collection)
 	if err != nil {
 		return err
