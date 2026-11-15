@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -85,7 +86,16 @@ func (s *Store) Backup(ctx context.Context, dir string, keep int) (string, error
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", err
 	}
-	path := filepath.Join(dir, "onpresence-"+time.Now().UTC().Format("20060102-150405")+".db")
+	// VACUUM INTO refuses an existing file, so a second backup in the same
+	// second gets a numbered name.
+	base := filepath.Join(dir, "onpresence-"+time.Now().UTC().Format("20060102-150405"))
+	path := base + ".db"
+	for n := 2; ; n++ {
+		if _, err := os.Stat(path); err != nil {
+			break
+		}
+		path = fmt.Sprintf("%s-%d.db", base, n)
+	}
 	if _, err := s.DB.ExecContext(ctx, `VACUUM INTO ?`, path); err != nil {
 		return "", err
 	}

@@ -206,3 +206,29 @@ func TestExportImportRoundTrip(t *testing.T) {
 		t.Fatalf("games %d playlists %+v", len(games), pls)
 	}
 }
+
+// Two backups in the same second must both succeed and keep separate files.
+func TestBackupSameSecond(t *testing.T) {
+	ctx := context.Background()
+	st, err := Open(ctx, filepath.Join(t.TempDir(), "x.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	dir := t.TempDir()
+	seen := map[string]bool{}
+	for i := 0; i < 3; i++ {
+		p, err := st.Backup(ctx, dir, 7)
+		if err != nil {
+			t.Fatalf("backup %d: %v", i, err)
+		}
+		if seen[p] {
+			t.Fatalf("backup %d reused %s", i, p)
+		}
+		seen[p] = true
+	}
+	files, _ := filepath.Glob(filepath.Join(dir, "onpresence-*.db"))
+	if len(files) != 3 {
+		t.Fatalf("got %d backup files, want 3", len(files))
+	}
+}

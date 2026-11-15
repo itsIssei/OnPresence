@@ -293,7 +293,7 @@ func dedupeIDs[T any](items []T, id func(*T) *int64) {
 	}
 }
 
-var backupName = regexp.MustCompile(`^onpresence-\d{8}-\d{6}\.db$`)
+var backupName = regexp.MustCompile(`^onpresence-\d{8}-\d{6}(-\d{1,4})?\.db$`)
 
 func (s *Server) listBackups(w http.ResponseWriter, r *http.Request) {
 	entries, _ := os.ReadDir(s.cfg.BackupDir())
