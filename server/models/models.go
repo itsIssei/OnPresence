@@ -367,6 +367,7 @@ type Game struct {
 	IsFeatured  bool   `json:"is_featured"`
 	SortOrder   int    `json:"sort_order"`
 	Status      string `json:"status"` // see ItemStatuses
+	SteamAppID  int    `json:"steam_appid"`
 	CreatedAt   string `json:"created_at"`
 }
 

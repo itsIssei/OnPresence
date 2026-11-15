@@ -75,7 +75,7 @@ func SearchAniList(query string, mediaType string) ([]AniListMedia, error) {
 	}
 
 	client := apiClient
-	resp, err := client.Post("https://graphql.anilist.co", "application/json", bytes.NewBuffer(requestBody))
+	resp, err := client.Post(aniListEndpoint, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to call AniList API: %w", err)
 	}

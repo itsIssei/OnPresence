@@ -174,7 +174,7 @@ func (s *Store) SaveBadge(ctx context.Context, x *models.Badge) error {
 // ---------------------------------------------------------------- games
 
 func (s *Store) Games(ctx context.Context) ([]models.Game, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, created_at
+	rows, err := s.DB.QueryContext(ctx, `SELECT id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, steam_appid, created_at
 		FROM games ORDER BY is_featured DESC, sort_order, id DESC`)
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func (s *Store) Games(ctx context.Context) ([]models.Game, error) {
 	out := []models.Game{}
 	for rows.Next() {
 		var x models.Game
-		if err := rows.Scan(&x.ID, &x.Title, &x.Subtitle, &x.CoverImage, &x.Rating, &x.Badge, &x.BadgeType, &x.HoursPlayed, &x.Category, &x.ReviewNote, &x.IsFeatured, &x.SortOrder, &x.Status, &x.CreatedAt); err != nil {
+		if err := rows.Scan(&x.ID, &x.Title, &x.Subtitle, &x.CoverImage, &x.Rating, &x.Badge, &x.BadgeType, &x.HoursPlayed, &x.Category, &x.ReviewNote, &x.IsFeatured, &x.SortOrder, &x.Status, &x.SteamAppID, &x.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, x)
@@ -196,9 +196,9 @@ func (s *Store) SaveGame(ctx context.Context, x *models.Game) error {
 		x.CreatedAt = now()
 	}
 	id, err := s.upsert(ctx, x.ID,
-		`UPDATE games SET title=?, subtitle=?, cover_image=?, rating=?, badge=?, badge_type=?, hours_played=?, category=?, review_note=?, is_featured=?, sort_order=?, status=? WHERE id=?`,
-		`INSERT INTO games (title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
-		x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder, x.Status)
+		`UPDATE games SET title=?, subtitle=?, cover_image=?, rating=?, badge=?, badge_type=?, hours_played=?, category=?, review_note=?, is_featured=?, sort_order=?, status=?, steam_appid=? WHERE id=?`,
+		`INSERT INTO games (title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, steam_appid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`,
+		x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder, x.Status, x.SteamAppID)
 	x.ID = id
 	return err
 }

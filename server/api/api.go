@@ -31,6 +31,12 @@ type Server struct {
 	steamCache   *services.Cache[*services.SteamPresenceData]
 	lastfmCache  *services.Cache[*services.LastfmTrack]
 
+	// Library import (Steam, AniList): fetchers, short-lived previews and a
+	// limit on failed upstream calls.
+	library      libraryFetchers
+	libraryCache *services.Cache[[]services.LibraryItem]
+	importFails  *failLimiter
+
 	og ogCache
 }
 
@@ -45,6 +51,9 @@ func New(cfg config.Config, st *store.Store, web fs.FS) (*Server, error) {
 		discordCache: services.NewCache[*services.LanyardResponse](20 * time.Second),
 		steamCache:   services.NewCache[*services.SteamPresenceData](60 * time.Second),
 		lastfmCache:  services.NewCache[*services.LastfmTrack](30 * time.Second),
+		library:      libraryFetchers{steam: services.FetchSteamLibrary, aniList: services.FetchAniListList},
+		libraryCache: services.NewCache[[]services.LibraryItem](60 * time.Second),
+		importFails:  newFailLimiter(10, 10*time.Minute),
 	}
 	has, err := st.HasAdmin(context.Background())
 	if err != nil {
@@ -64,6 +73,7 @@ func New(cfg config.Config, st *store.Store, web fs.FS) (*Server, error) {
 func (s *Server) Sweep() {
 	s.loginIP.Sweep()
 	s.loginGlobal.Sweep()
+	s.importFails.Sweep()
 }
 
 // Handler returns the full HTTP handler with middleware applied.
@@ -120,6 +130,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/admin/import/anilist", a(s.importAniList))
 	mux.HandleFunc("GET /api/v1/admin/import/games", a(s.importGames))
 	mux.HandleFunc("GET /api/v1/admin/import/music", a(s.importMusic))
+	mux.HandleFunc("GET /api/v1/admin/import/steam-library", a(s.importSteamLibrary))
+	mux.HandleFunc("GET /api/v1/admin/import/anilist-list", a(s.importAniListList))
+	mux.HandleFunc("POST /api/v1/admin/import/bulk", a(s.bulkAdd))
 	mux.HandleFunc("POST /api/v1/admin/import/favicon", a(s.importFavicon))
 
 	// Admin: decoration packs, export/restore, backups

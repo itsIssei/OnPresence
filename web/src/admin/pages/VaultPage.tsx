@@ -16,6 +16,7 @@ import { useDraft } from "../draft";
 import { useBlocks } from "../blocks";
 import { BlockEditor } from "./VaultBlocks";
 import { CollectionManager, type FieldDef } from "../Collection";
+import { LibraryImport } from "./LibraryImport";
 import { Field, MediaInput, PageHeader, Section } from "../kit";
 
 const TABS: { id: FixedSectionId; label: string }[] = [
@@ -67,6 +68,7 @@ export function VaultPage() {
               </span>
               <Switch checked={shown(t.id)} onCheckedChange={(v) => setShown(t.id, v)} aria-label={`Show ${t.label}`} />
             </label>
+            {(t.id === "games" || t.id === "anime" || t.id === "manga") && <LibraryImport source={t.id === "games" ? "steam" : t.id} />}
             {t.id === "games" && <GamesManager />}
             {t.id === "anime" && <MediaManager kind="anime" />}
             {t.id === "manga" && <MediaManager kind="manga" />}
@@ -194,7 +196,7 @@ function GamesManager() {
       collection="games"
       noun="Game"
       fields={gameFields}
-      defaults={{ title: "", badge_type: "good", status: "owned", hours_played: 0, is_featured: false }}
+      defaults={{ title: "", badge_type: "good", status: "owned", hours_played: 0, steam_appid: 0, is_featured: false }}
       importer={(apply) => (
         <ImportSearch<GameSearchResult>
           placeholder="Search Steam, or paste a Steam store / SteamDB link or app id"
@@ -243,6 +245,7 @@ function SteamResult({ r, apply }: { r: GameSearchResult; apply: (p: Partial<Gam
     const g = (src.genres ?? []).slice(0, 2).join(" / ");
     apply({
       title: src.title,
+      steam_appid: r.id,
       cover_image: src.cover_image || r.cover_image,
       ...(g ? { category: g.toUpperCase() } : {}),
       ...(src.developer || src.year ? { subtitle: [src.developer, src.year].filter(Boolean).join(" · ") } : {}),
@@ -272,7 +275,7 @@ function SteamResult({ r, apply }: { r: GameSearchResult; apply: (p: Partial<Gam
             type="button"
             title={`Use ${img.label} as cover`}
             onClick={() => {
-              apply({ cover_image: img.url });
+              apply({ cover_image: img.url, steam_appid: r.id });
               toast.success(`${img.label} image set as cover`);
             }}
             className="group flex-none overflow-hidden rounded-md border text-left transition hover:ring-2 hover:ring-ring"

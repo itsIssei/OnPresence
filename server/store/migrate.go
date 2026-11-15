@@ -60,6 +60,7 @@ var migrations = []migration{
 		created_at TEXT NOT NULL DEFAULT ''
 	);
 	CREATE INDEX idx_case_items_case ON case_items(case_id, sort_order)`)},
+	{8, "steam app id", execSQL(`ALTER TABLE games ADD COLUMN steam_appid INTEGER NOT NULL DEFAULT 0`)},
 }
 
 func execSQL(q string) func(context.Context, *sql.Tx) error {

@@ -430,6 +430,9 @@ func itemStatus(v validationError, s *string) {
 	}
 }
 
+// maxAppID bounds Steam app ids (they are 32-bit numbers).
+const maxAppID = 1<<31 - 1
+
 func validateGame(v validationError, x *models.Game) {
 	text(v, "title", &x.Title, 1, 120)
 	text(v, "subtitle", &x.Subtitle, 0, 120)
@@ -442,6 +445,9 @@ func validateGame(v validationError, x *models.Game) {
 	itemStatus(v, &x.Status)
 	if x.HoursPlayed < 0 || x.HoursPlayed > 1_000_000 {
 		v.add("hours_played", "Out of range")
+	}
+	if x.SteamAppID < 0 || x.SteamAppID > maxAppID {
+		v.add("steam_appid", "Out of range")
 	}
 }
 

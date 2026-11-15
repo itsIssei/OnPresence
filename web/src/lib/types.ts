@@ -171,6 +171,7 @@ export interface Game {
   is_featured: boolean;
   sort_order: number;
   status: ItemStatus;
+  steam_appid: number;
   created_at: string;
 }
 

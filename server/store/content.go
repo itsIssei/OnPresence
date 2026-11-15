@@ -127,8 +127,8 @@ func (s *Store) ImportContent(ctx context.Context, e *models.Export) error {
 			}
 		}
 		for _, x := range e.Games {
-			if _, err := ins(`INSERT INTO games (id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				x.ID, x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder, statusOrOwned(x.Status), orNow(x.CreatedAt)); err != nil {
+			if _, err := ins(`INSERT INTO games (id, title, subtitle, cover_image, rating, badge, badge_type, hours_played, category, review_note, is_featured, sort_order, status, steam_appid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				x.ID, x.Title, x.Subtitle, x.CoverImage, x.Rating, x.Badge, x.BadgeType, x.HoursPlayed, x.Category, x.ReviewNote, b2i(x.IsFeatured), x.SortOrder, statusOrOwned(x.Status), x.SteamAppID, orNow(x.CreatedAt)); err != nil {
 				return err
 			}
 		}

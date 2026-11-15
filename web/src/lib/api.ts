@@ -5,6 +5,7 @@ import type {
   CaseItem,
   Me,
   Game,
+  ItemStatus,
   Media,
   Playlist,
   PresenceResponse,
@@ -126,6 +127,10 @@ export const api = {
   importAniList: (q: string, type: "ANIME" | "MANGA") =>
     get<AniListResult[]>(`/api/v1/admin/import/anilist?q=${encodeURIComponent(q)}&type=${type}`),
   importGames: (q: string) => get<GameSearchResult[]>(`/api/v1/admin/import/games?q=${encodeURIComponent(q)}`),
+  importSteamLibrary: () => get<{ items: LibraryItem[] }>("/api/v1/admin/import/steam-library"),
+  importAniListList: (user: string, type: "anime" | "manga") =>
+    get<{ items: LibraryItem[] }>(`/api/v1/admin/import/anilist-list?user=${encodeURIComponent(user)}&type=${type}`),
+  importBulk: (kind: "games" | "media", items: Partial<LibraryItem>[]) => request<{ added: number; skipped: number }>("POST", "/api/v1/admin/import/bulk", { kind, items }),
   importFavicon: (url: string) => request<Upload>("POST", `/api/v1/admin/import/favicon?url=${encodeURIComponent(url)}`),
   importMusic: (url: string) => get<MusicMeta>(`/api/v1/admin/import/music?url=${encodeURIComponent(url)}`),
 
@@ -160,6 +165,21 @@ export interface GameSearchResult {
   description: string;
   metacritic: number;
   source: string;
+}
+
+/** One row of a library preview (Steam games or an AniList list). */
+export interface LibraryItem {
+  steam_appid?: number;
+  anilist_id?: number;
+  title: string;
+  cover_image: string;
+  hours_played: number;
+  type?: "anime" | "manga";
+  progress_info?: string;
+  rating?: string;
+  tags?: string;
+  status: ItemStatus;
+  exists: boolean;
 }
 
 export interface MusicMeta {

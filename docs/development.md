@@ -80,6 +80,14 @@ cd web && npm run lint && npx tsc -b
 - The address is the state of the popup. Opening an item adds a history entry, so back closes it; closing adds one too, so forward and back both work. Section chips and status chips replace the entry. A bad section, id or extra segment goes back to `/vault` without a history entry.
 - The server needs nothing: `serveWeb` falls back to the page for every `/vault/...` path (`vault` is in `reservedSlugs`).
 
+## Library import
+
+- `games.steam_appid` (migration 8) is the Steam app id; 0 for older entries. Export and restore carry it.
+- Admin routes: `GET /api/v1/admin/import/steam-library` (needs the Steam Web API key and a SteamID64 in the profile), `GET /api/v1/admin/import/anilist-list?user=&type=anime|manga`, `POST /api/v1/admin/import/bulk` with `{"kind":"games"|"media","items":[...]}`. The two GET routes only preview and mark entries that already exist; nothing is added until the bulk call.
+- A bulk call adds at most 500 items in one transaction, after the existing ones. Games are skipped when the app id exists (or, for old games without one, the title, ignoring case); media when the AniList id exists.
+- AniList status mapping: CURRENT/REPEATING to `playing`, COMPLETED to `completed`, DROPPED/PAUSED to `dropped`, PLANNING to `wishlist`. Steam entries are `owned`.
+- Tests point the upstream calls at `httptest` servers (`services/library_test.go`) or replace the fetchers on the server (`api/library_test.go`).
+
 ## Releasing
 
 Push a tag like `v1.2.0`. `.github/workflows/release.yml` publishes the multi-arch image to `ghcr.io/<owner>/onpresence` and attaches binaries to the GitHub release. The first time, make the package public under GitHub → Packages → onpresence → Package settings.
