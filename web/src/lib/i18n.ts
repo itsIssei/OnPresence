@@ -23,6 +23,8 @@ export const strings = {
   empty: "Nothing here yet.",
   copyCode: "Copy code",
   copied: "Copied!",
+  copyLink: "Copy link",
+  linkCopied: "Link copied",
   join: "Join",
   featured: "Featured",
   recent: "Recently added",

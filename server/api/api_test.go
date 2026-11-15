@@ -252,6 +252,12 @@ func TestCatalogAndStatic(t *testing.T) {
 	if res.StatusCode != 200 || !strings.Contains(body, "<html>") {
 		t.Fatal("spa fallback")
 	}
+	// Deep links of the vault page are client routes: they serve the page.
+	for _, p := range []string{"/vault/games", "/vault/games/1", "/vault/case-3", "/vault/games?status=wishlist", "/vault/nope/99"} {
+		if res, body := e.do("GET", p, nil); res.StatusCode != 200 || !strings.Contains(body, "<html>") {
+			t.Errorf("%s should serve the page: %d", p, res.StatusCode)
+		}
+	}
 	if res, _ := e.do("GET", "/missing.js", nil); res.StatusCode != 404 {
 		t.Fatal("missing asset should 404")
 	}
@@ -584,7 +590,9 @@ func TestShortLinks(t *testing.T) {
 	}
 	// Switched off or unknown names, reserved names and deeper paths fall back to the page.
 	e.do("PUT", "/api/v1/admin/shortlinks/"+jsonNum(made.ID), map[string]any{"slug": made.Slug, "url": "https://example.com/r", "is_active": false})
-	for _, p := range []string{"/" + made.Slug, "/nope", "/vault", "/gh/extra"} {
+	// A short link that shares a name with a vault section does not change /vault/<section>.
+	e.do("POST", "/api/v1/admin/shortlinks", map[string]any{"slug": "games", "url": "https://example.com/g"})
+	for _, p := range []string{"/" + made.Slug, "/nope", "/vault", "/gh/extra", "/vault/games", "/vault/games/1"} {
 		if res, body := e.do("GET", p, nil); res.StatusCode != 200 || !strings.Contains(body, "<html>") {
 			t.Errorf("%s should serve the page: %d", p, res.StatusCode)
 		}

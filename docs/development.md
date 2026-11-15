@@ -74,6 +74,12 @@ cd web && npm run lint && npx tsc -b
 - `featured` and `recent` are computed in the browser from the `/api/v1/vault` payload. There is no extra endpoint, and no migration.
 - The block editor is `web/src/admin/pages/VaultBlocks.tsx`. Keep dashboard code out of `web/src/vault`.
 
+## Vault addresses
+
+- `/vault/<section>` shows one section, `/vault/<section>/<id>` opens the item popup. `<section>` is `referrals`, `games`, `anime`, `manga`, `music` or `case-<id>`. `?status=<value>` filters the section in the address only; an unknown value is ignored.
+- The address is the state of the popup. Opening an item adds a history entry, so back closes it; closing adds one too, so forward and back both work. Section chips and status chips replace the entry. A bad section, id or extra segment goes back to `/vault` without a history entry.
+- The server needs nothing: `serveWeb` falls back to the page for every `/vault/...` path (`vault` is in `reservedSlugs`).
+
 ## Releasing
 
 Push a tag like `v1.2.0`. `.github/workflows/release.yml` publishes the multi-arch image to `ghcr.io/<owner>/onpresence` and attaches binaries to the GitHub release. The first time, make the package public under GitHub → Packages → onpresence → Package settings.

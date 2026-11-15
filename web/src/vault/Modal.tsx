@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * top-layer rendering come from the browser. Used on the public page, where
  * Radix Dialog does not work under Preact.
  */
-export function Modal({ open, onClose, children, className }: { open: boolean; onClose: () => void; children: React.ReactNode; className?: string }) {
+export function Modal({ open, onClose, children, actions, className }: { open: boolean; onClose: () => void; children: React.ReactNode; actions?: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -54,6 +54,7 @@ export function Modal({ open, onClose, children, className }: { open: boolean; o
             >
               <X className="size-4" />
             </button>
+            {actions && <div className="absolute right-14 top-3 z-10 flex gap-2">{actions}</div>}
             {children}
           </div>
         </TitleId.Provider>

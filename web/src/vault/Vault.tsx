@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, Clock, Copy, ExternalLink, Pause, Play, Search, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useSearch } from "wouter";
+import { ArrowLeft, Check, ChevronRight, Clock, Copy, ExternalLink, Link as LinkIcon, Pause, Play, Search, Star } from "lucide-react";
 import { siSpotify, siYoutubemusic } from "simple-icons";
 import { BadgeGlyph, BrandIcon } from "@/lib/icons";
 import { statusLabel, strings, type StatusKind, type Strings } from "@/lib/i18n";
@@ -12,10 +13,12 @@ interface Props {
   profile: PublicProfile;
   vault: VaultData;
   audio: AudioController | null;
+  /** The /vault/:section?/:id? part of the address. */
+  route: { section?: string; id?: string; extra: boolean };
   onClose: () => void;
 }
 
-type Detail = { kind: "case"; item: CaseItem; aspect: Case["aspect"] } | { kind: "game"; item: Game } | { kind: "media"; item: Media } | { kind: "playlist"; item: Playlist } | { kind: "entry"; item: Referral };
+type Detail = { kind: "case"; item: CaseItem; aspect: Case["aspect"]; caseId: number } | { kind: "game"; item: Game } | { kind: "media"; item: Media } | { kind: "playlist"; item: Playlist } | { kind: "entry"; item: Referral };
 
 /** A tile of the featured and recent rows: any item of any section. */
 interface Entry {
@@ -43,13 +46,75 @@ const GRID_COLS = {
 const SIZE_STEPS = ["small", "medium", "large"] as const;
 const CASE_LAYOUT = { grid: "poster", wide: "wide", list: "list" } as const;
 
-export function Vault({ profile, vault, audio, onClose }: Props) {
+const FIXED_SECTIONS: FixedSectionId[] = ["referrals", "games", "anime", "manga", "music"];
+
+/** "games" or "case-3" (the address form) to a section id; null when it is neither. */
+function parseSlug(raw?: string): SectionId | null {
+  if (!raw) return null;
+  if ((FIXED_SECTIONS as string[]).includes(raw)) return raw as FixedSectionId;
+  const m = /^case-([1-9]\d*)$/.exec(raw);
+  return m ? (`case:${m[1]}` as SectionId) : null;
+}
+
+/** The address of a section, an item of it, and an optional status filter. */
+function vaultPath(section?: SectionId, itemId?: number, status?: ItemStatus): string {
+  if (!section) return "/vault";
+  return `/vault/${section.replace(":", "-")}${itemId ? `/${itemId}` : ""}${status ? `?status=${status}` : ""}`;
+}
+
+/** The section and id an item is addressed by. */
+function refOf(d: Detail): { section: SectionId; id: number } {
+  switch (d.kind) {
+    case "case":
+      return { section: `case:${d.caseId}`, id: d.item.id };
+    case "game":
+      return { section: "games", id: d.item.id };
+    case "media":
+      return { section: d.item.type === "anime" ? "anime" : "manga", id: d.item.id };
+    case "playlist":
+      return { section: "music", id: d.item.id };
+    default:
+      return { section: "referrals", id: d.item.id };
+  }
+}
+
+/** The item at /vault/<section>/<id>, or null. */
+function findDetail(v: VaultData, section: SectionId, id: number): Detail | null {
+  const caseId = caseSectionId(section);
+  if (caseId !== null) {
+    const c = v.cases.find((x) => x.id === caseId);
+    const item = c?.items.find((i) => i.id === id);
+    return c && item ? { kind: "case", item, aspect: c.aspect, caseId: c.id } : null;
+  }
+  switch (section as FixedSectionId) {
+    case "referrals": {
+      const item = v.referrals.find((x) => x.id === id);
+      return item ? { kind: "entry", item } : null;
+    }
+    case "games": {
+      const item = v.games.find((x) => x.id === id);
+      return item ? { kind: "game", item } : null;
+    }
+    case "anime":
+    case "manga": {
+      const item = v[section as "anime" | "manga"].find((x) => x.id === id);
+      return item ? { kind: "media", item } : null;
+    }
+    case "music": {
+      const item = v.playlists.find((x) => x.id === id);
+      return item ? { kind: "playlist", item } : null;
+    }
+    default:
+      return null;
+  }
+}
+
+export function Vault({ profile, vault, audio, route, onClose }: Props) {
   const s = profile.settings;
   const t = strings;
-  const [filter, setFilter] = useState<SectionId | "all">("all");
+  const [, navigate] = useLocation();
+  const search = useSearch();
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Partial<Record<SectionId, ItemStatus>>>({});
-  const [detail, setDetail] = useState<Detail | null>(null);
 
   const q = query.trim().toLowerCase();
   const match = (...fields: string[]) => !q || fields.some((f) => f.toLowerCase().includes(q));
@@ -82,7 +147,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
       ...vault.manga.map(media),
       ...vault.playlists.map((p): Entry => ({ key: `p${p.id}`, title: p.title, sub: p.artist || p.subtitle, image: p.cover_image, rating: "", created: p.created_at, featured: p.is_featured, detail: { kind: "playlist", item: p } })),
       ...vault.referrals.map((r): Entry => ({ key: `r${r.id}`, title: r.title, sub: r.game_name, image: r.image_url, rating: "", created: r.created_at, featured: false, detail: { kind: "entry", item: r } })),
-      ...vault.cases.flatMap((c) => c.items.map((i): Entry => ({ key: `c${i.id}`, title: i.title, sub: i.subtitle, image: i.image, rating: i.rating, created: i.created_at, featured: i.is_featured, detail: { kind: "case", item: i, aspect: c.aspect } }))),
+      ...vault.cases.flatMap((c) => c.items.map((i): Entry => ({ key: `c${i.id}`, title: i.title, sub: i.subtitle, image: i.image, rating: i.rating, created: i.created_at, featured: i.is_featured, detail: { kind: "case", item: i, aspect: c.aspect, caseId: c.id } }))),
     ];
   }, [vault]);
 
@@ -96,6 +161,37 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
   const sectionBlocks = blocks.filter((b) => b.type === "section" && b.section && total(b.section) > 0);
   const sections = sectionBlocks.map((b) => b.section as SectionId);
   const fixedLabels: Record<FixedSectionId, string> = { referrals: t.referrals, games: t.games, anime: t.anime, manga: t.manga, music: t.music };
+
+  // The address decides the open item and the status filter. A bad address
+  // goes back to /vault without a history entry.
+  const sectionId = parseSlug(route.section);
+  const idNum = route.id && /^[1-9]\d*$/.test(route.id) ? Number(route.id) : null;
+  const detail = !route.extra && sectionId && idNum ? findDetail(vault, sectionId, idNum) : null;
+  const addressed = sectionId && sections.includes(sectionId) ? sectionId : null;
+  const bad = route.extra || (route.section !== undefined && (!sectionId || (!route.id && !addressed))) || (route.id !== undefined && !detail);
+  useEffect(() => {
+    if (bad) navigate("/vault", { replace: true });
+  }, [bad, navigate]);
+  const statusParam = new URLSearchParams(search).get("status");
+  const urlStatus = ITEM_STATUSES.find((x) => x === statusParam);
+
+  // The section chip. It starts on the section of the address.
+  const [filter, setFilter] = useState<SectionId | "all">(() => (!bad && addressed ? addressed : "all"));
+  const pickSection = (id: SectionId | "all") => {
+    setFilter(id);
+    navigate(id === "all" ? "/vault" : vaultPath(id), { replace: true });
+  };
+  const setStatus = (id: SectionId, st?: ItemStatus) => navigate(vaultPath(id, undefined, st), { replace: true });
+  // Opening adds a history entry, so back closes the popup. Closing adds one too, so forward and back both work.
+  const openDetail = (d: Detail) => {
+    const r = refOf(d);
+    navigate(vaultPath(r.section, r.id, r.section === addressed ? urlStatus : undefined));
+  };
+  const closeDetail = () => {
+    // The popup also reports a close when the address moved first (back button): do nothing then.
+    const m = /^\/vault\/([^/]+)\/[^/]+/.exec(location.pathname);
+    if (m) navigate(`/vault/${m[1]}${location.search}`);
+  };
   const label = (id: SectionId) => sectionBlocks.find((b) => b.section === id)?.title || caseOf(id)?.name || fixedLabels[id as FixedSectionId];
 
   const heading = (text: string, icon?: string) => (
@@ -117,7 +213,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
     const kind: StatusKind | null = c ? "case" : fixed === "games" ? "game" : fixed === "anime" || fixed === "manga" ? fixed : null;
     const all: { status: ItemStatus }[] = c ? c.items : fixed === "games" || fixed === "anime" || fixed === "manga" ? vault[fixed] : [];
     const present = ITEM_STATUSES.filter((st) => all.some((x) => x.status === st));
-    const active = statusFilter[id] && present.includes(statusFilter[id]) ? statusFilter[id] : undefined;
+    const active = addressed === id && urlStatus && present.includes(urlStatus) ? urlStatus : undefined;
     const byStatus = <T extends { status: ItemStatus }>(l: T[]) => (active ? l.filter((x) => x.status === active) : l);
     const caseView = c && b.layout ? { ...c, layout: CASE_LAYOUT[b.layout as keyof typeof CASE_LAYOUT] ?? c.layout } : c;
     return (
@@ -129,7 +225,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
               <button
                 key={st ?? "all"}
                 type="button"
-                onClick={() => setStatusFilter((prev) => ({ ...prev, [id]: st }))}
+                onClick={() => setStatus(id, st)}
                 aria-pressed={active === st}
                 className={cn(
                   "flex-none rounded-full px-3 py-1 text-[11px] font-semibold transition",
@@ -141,15 +237,15 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
             ))}
           </div>
         )}
-        {caseView && <CaseGrid c={caseView} density={density} items={byStatus(data.cases.get(caseView.id) ?? [])} t={t} onOpen={(item) => setDetail({ kind: "case", item, aspect: caseView.aspect })} />}
-        {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => setDetail({ kind: "entry", item })} />}
+        {caseView && <CaseGrid c={caseView} density={density} items={byStatus(data.cases.get(caseView.id) ?? [])} t={t} onOpen={(item) => openDetail({ kind: "case", item, aspect: caseView.aspect, caseId: caseView.id })} />}
+        {id === "referrals" && <Referrals items={data.referrals} t={t} onOpen={(item) => openDetail({ kind: "entry", item })} />}
         {id === "games" && (
           <div className={cn("grid", list ? "grid-cols-1 gap-2" : cn("gap-4", GRID_COLS.games[density]))}>
             {byStatus(data.games).map((g) =>
               list ? (
-                <ListRow key={g.id} image={g.cover_image} title={g.title} sub={[g.category, g.hours_played ? `${g.hours_played}${t.hours}` : ""].filter(Boolean).join(" · ")} rating={g.rating} status={g.status} kind="game" thumb="aspect-[460/215] w-28" onOpen={() => setDetail({ kind: "game", item: g })} />
+                <ListRow key={g.id} image={g.cover_image} title={g.title} sub={[g.category, g.hours_played ? `${g.hours_played}${t.hours}` : ""].filter(Boolean).join(" · ")} rating={g.rating} status={g.status} kind="game" thumb="aspect-[460/215] w-28" onOpen={() => openDetail({ kind: "game", item: g })} />
               ) : (
-                <GameCard key={g.id} g={g} t={t} onOpen={() => setDetail({ kind: "game", item: g })} />
+                <GameCard key={g.id} g={g} t={t} onOpen={() => openDetail({ kind: "game", item: g })} />
               ),
             )}
           </div>
@@ -158,9 +254,9 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
           <div className={cn("grid", list ? "grid-cols-1 gap-2" : cn("gap-4", GRID_COLS.media[density]))}>
             {byStatus(data[id]).map((m) =>
               list ? (
-                <ListRow key={m.id} image={m.cover_image} title={m.title} sub={m.progress_info || m.tags} rating={m.rating} status={m.status} kind={mediaKind(m)} thumb="aspect-[2/3] w-14" onOpen={() => setDetail({ kind: "media", item: m })} />
+                <ListRow key={m.id} image={m.cover_image} title={m.title} sub={m.progress_info || m.tags} rating={m.rating} status={m.status} kind={mediaKind(m)} thumb="aspect-[2/3] w-14" onOpen={() => openDetail({ kind: "media", item: m })} />
               ) : (
-                <MediaCard key={m.id} m={m} t={t} onOpen={() => setDetail({ kind: "media", item: m })} />
+                <MediaCard key={m.id} m={m} t={t} onOpen={() => openDetail({ kind: "media", item: m })} />
               ),
             )}
           </div>
@@ -168,7 +264,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
         {id === "music" && (
           <div className={cn("grid gap-4", list ? "grid-cols-1" : GRID_COLS.music[density])}>
             {data.music.map((p) => (
-              <PlaylistCard key={p.id} p={p} t={t} audio={audio} onOpen={() => setDetail({ kind: "playlist", item: p })} />
+              <PlaylistCard key={p.id} p={p} t={t} audio={audio} onOpen={() => openDetail({ kind: "playlist", item: p })} />
             ))}
           </div>
         )}
@@ -218,7 +314,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
         {heading(b.title || (b.type === "featured" ? t.featured : t.recent))}
         <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 [scrollbar-width:none]">
           {row.map((e) => (
-            <button key={e.key} type="button" onClick={() => setDetail(e.detail)} className="group w-32 flex-none text-left sm:w-36" aria-label={`${e.title}: ${t.details}`}>
+            <button key={e.key} type="button" onClick={() => openDetail(e.detail)} className="group w-32 flex-none text-left sm:w-36" aria-label={`${e.title}: ${t.details}`}>
               <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-white/[0.07] bg-black/40 transition group-hover:-translate-y-0.5 group-hover:border-white/15">
                 <Cover src={e.image} alt={e.title} />
                 {e.rating && (
@@ -273,7 +369,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
             <button
               key={id}
               type="button"
-              onClick={() => setFilter(id)}
+              onClick={() => pickSection(id)}
               aria-pressed={filter === id}
               className={cn(
                 "flex-none rounded-full px-3.5 py-1.5 text-xs font-semibold transition",
@@ -300,7 +396,7 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
 
       <div className="flex flex-col gap-12">{rendered}</div>
 
-      <Modal open={!!detail} onClose={() => setDetail(null)}>
+      <Modal open={!!detail} onClose={closeDetail} actions={detail && <CopyLink path={vaultPath(refOf(detail).section, refOf(detail).id)} t={t} />}>
           {detail && <DetailView d={detail} t={t} audio={audio} />}
       </Modal>
     </section>
@@ -308,6 +404,27 @@ export function Vault({ profile, vault, audio, onClose }: Props) {
 }
 
 // ---------------------------------------------------------------------------
+
+/** Copies the address of the open item. Hidden where the clipboard API is missing. */
+function CopyLink({ path, t }: { path: string; t: Strings }) {
+  const [copied, setCopied] = useState(false);
+  if (!navigator.clipboard) return null;
+  const copy = () => {
+    navigator.clipboard.writeText(location.origin + path).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
+  };
+  const label = copied ? t.linkCopied : t.copyLink;
+  return (
+    <button type="button" onClick={copy} aria-label={label} title={label} className="grid size-8 place-items-center rounded-full bg-black/50 text-white/80 transition hover:bg-black/70 hover:text-white">
+      {copied ? <Check className="size-4 text-emerald-400" /> : <LinkIcon className="size-4" />}
+    </button>
+  );
+}
 
 function Cover({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [failed, setFailed] = useState<string | null>(null);

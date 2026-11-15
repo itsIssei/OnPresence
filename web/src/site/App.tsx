@@ -101,16 +101,24 @@ export function App() {
       <BackgroundFX fx={s.background_fx} accent={accent} />
 
       <Switch>
-        <Route path="/vault">
-          <div className="relative z-10">
-            {vault.data ? (
-              <Suspense fallback={null}>
-              <Vault profile={p} vault={vault.data} audio={defaultTrack || vault.data.playlists.length ? audio : null} onClose={() => navigate("/")} />
-              </Suspense>
-            ) : (
-              <p className="py-24 text-center text-sm text-white/50">…</p>
-            )}
-          </div>
+        <Route path="/vault/:section?/:id?/*?">
+          {(params) => (
+            <div className="relative z-10">
+              {vault.data ? (
+                <Suspense fallback={null}>
+                  <Vault
+                    profile={p}
+                    vault={vault.data}
+                    audio={defaultTrack || vault.data.playlists.length ? audio : null}
+                    route={{ section: params.section, id: params.id, extra: !!params["*"] }}
+                    onClose={() => navigate("/")}
+                  />
+                </Suspense>
+              ) : (
+                <p className="py-24 text-center text-sm text-white/50">…</p>
+              )}
+            </div>
+          )}
         </Route>
         <Route>
           <main
